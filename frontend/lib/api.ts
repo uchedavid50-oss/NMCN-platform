@@ -164,6 +164,12 @@ export interface TutorReply {
   reply: string;
 }
 
+export interface StudyPlan {
+  has_weak_topics: boolean;
+  weak_topic_names: string[];
+  plan: string;
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -246,4 +252,7 @@ export const api = {
       { method: "POST", body: JSON.stringify({ question_id: questionId, message }) },
       token
     ),
+
+  getStudyPlan: (token: string) =>
+    request<StudyPlan>("/tutor/study-plan", { method: "POST" }, token),
 };

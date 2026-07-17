@@ -8,6 +8,7 @@ import {
   ApiError,
   AttemptHistory,
   OverviewStats,
+  StudyPlan,
   TopicPerformance,
 } from "@/lib/api";
 
@@ -25,6 +26,9 @@ export default function AnalyticsPage() {
   const [weakTopics, setWeakTopics] = useState<TopicPerformance[] | null>(null);
   const [history, setHistory] = useState<AttemptHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null);
+  const [studyPlanLoading, setStudyPlanLoading] = useState(false);
+  const [studyPlanError, setStudyPlanError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !token) return;
@@ -51,6 +55,20 @@ export default function AnalyticsPage() {
     );
   }
 
+  async function handleGetStudyPlan() {
+    if (!token) return;
+    setStudyPlanLoading(true);
+    setStudyPlanError(null);
+    try {
+      const result = await api.getStudyPlan(token);
+      setStudyPlan(result);
+    } catch (err) {
+      setStudyPlanError(err instanceof ApiError ? err.message : "Couldn't generate a study plan right now.");
+    } finally {
+      setStudyPlanLoading(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <p className="font-mono text-sm uppercase tracking-widest text-vital-teal">Your progress</p>
@@ -68,6 +86,41 @@ export default function AnalyticsPage() {
           <StatCard label="Mock exams" value={String(overview.mock_attempts)} />
         </div>
       )}
+
+      <section className="mt-10">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-ink-navy">Your study plan</h2>
+          {!studyPlan && (
+            <button
+              onClick={handleGetStudyPlan}
+              disabled={studyPlanLoading}
+              className="rounded-md bg-vital-teal px-4 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+            >
+              {studyPlanLoading ? "Generating…" : "Get my study plan"}
+            </button>
+          )}
+        </div>
+
+        {studyPlanError && <p className="mt-3 text-sm text-pulse-coral">{studyPlanError}</p>}
+
+        {studyPlan && (
+          <div className="mt-4 rounded-md border border-mist bg-white p-5">
+            {studyPlan.has_weak_topics && (
+              <p className="mb-3 font-mono text-xs uppercase tracking-widest text-vital-teal">
+                Based on: {studyPlan.weak_topic_names.join(", ")}
+              </p>
+            )}
+            <p className="whitespace-pre-line text-graphite">{studyPlan.plan}</p>
+            <button
+              onClick={handleGetStudyPlan}
+              disabled={studyPlanLoading}
+              className="mt-4 text-sm text-vital-teal hover:underline disabled:opacity-50"
+            >
+              {studyPlanLoading ? "Regenerating…" : "Regenerate"}
+            </button>
+          </div>
+        )}
+      </section>
 
       {weakTopics && weakTopics.length > 0 && (
         <section className="mt-10">

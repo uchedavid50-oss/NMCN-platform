@@ -10,3 +10,9 @@ class TutorAskRequest(BaseModel):
 
 class TutorAskResponse(BaseModel):
     reply: str
+
+
+class StudyPlanResponse(BaseModel):
+    has_weak_topics: bool
+    weak_topic_names: list[str]
+    plan: str

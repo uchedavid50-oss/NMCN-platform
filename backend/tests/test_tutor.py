@@ -118,3 +118,39 @@ def test_tutor_enforces_daily_rate_limit(client, auth_headers, monkeypatch, topi
     )
     assert third.status_code == 429
     assert "limit" in third.json()["detail"].lower()
+
+
+def test_study_plan_with_no_data_needs_no_api_key(client, auth_headers):
+    """A brand-new student with zero practice history shouldn't need Gemini
+    configured at all to get a response — no weak topics means no API call."""
+    response = client.post("/tutor/study-plan", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["has_weak_topics"] is False
+    assert body["weak_topic_names"] == []
+
+
+def test_study_plan_identifies_weak_topic_and_generates_plan(
+    client, auth_headers, monkeypatch, topic_with_question
+):
+    monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
+    monkeypatch.setattr(tutor_module.genai, "Client", _FakeGenaiClient)
+    topic, question = topic_with_question
+    wrong_option_id = next(o["id"] for o in question["options"] if not o["is_correct"])
+
+    # Answer the same question wrong across 3 separate practice attempts to
+    # build up enough sample size (min 3) with sub-60% accuracy (0%).
+    for _ in range(3):
+        start = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=auth_headers).json()
+        client.post(
+            f"/practice/{start['attempt_id']}/answer",
+            json={"question_id": question["id"], "selected_option_id": wrong_option_id},
+            headers=auth_headers,
+        )
+
+    response = client.post("/tutor/study-plan", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["has_weak_topics"] is True
+    assert "cardiovascular" in body["weak_topic_names"][0].lower()
+    assert body["plan"] == "This is a mocked tutor explanation."
