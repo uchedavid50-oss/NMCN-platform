@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --chart-line: #0e7c7b;
+}
+
+body {
+  background-color: #f7f5f0;
+  color: #3a4550;
+}
+
+/* Signature element: a pulse-line trace used on the auth pages and, later,
+   on readiness/score screens. Calm and steady rather than jagged — the
+   platform's whole point is to make exam-day nerves feel measured. */
+.pulse-trace {
+  stroke: var(--chart-line);
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: draw-pulse 2.4s ease-out forwards;
+}
+
+@keyframes draw-pulse {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-trace {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
