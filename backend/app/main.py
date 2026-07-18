@@ -15,6 +15,7 @@ from app.api.flashcards import router as flashcards_router
 from app.api.notes import router as notes_router
 from app.api.games import router as games_router
 from app.api.achievements import router as achievements_router
+from app.api.cbt_exam import router as cbt_exam_router
 from app.core.config import settings
 
 DEV_DEFAULT_JWT_SECRET = "dev-only-change-this-before-any-real-deployment"
@@ -57,6 +58,7 @@ app.include_router(flashcards_router)
 app.include_router(notes_router)
 app.include_router(games_router)
 app.include_router(achievements_router)
+app.include_router(cbt_exam_router)
 
 
 @app.get("/health")

@@ -234,6 +234,46 @@ export interface CertificateEligibility {
   reason: string;
 }
 
+export interface CBTExamOption {
+  id: string;
+  text: string;
+}
+
+export interface CBTExamQuestion {
+  id: string;
+  stem: string;
+  options: CBTExamOption[];
+}
+
+export interface CBTExamStartResponse {
+  session_id: string;
+  question_count: number;
+  time_limit_minutes: number;
+  started_at: string;
+  expires_at: string;
+  questions: CBTExamQuestion[];
+}
+
+export interface CBTExamBreakdownItem {
+  question_id: string;
+  stem: string;
+  subject_name: string;
+  your_answer_text: string | null;
+  correct_option_text: string;
+  is_correct: boolean;
+  explanation: string;
+}
+
+export interface CBTExamSubmitResponse {
+  session_id: string;
+  total_questions: number;
+  correct_answers: number;
+  score_percentage: number;
+  started_at: string;
+  finished_at: string;
+  breakdown: CBTExamBreakdownItem[];
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -408,4 +448,27 @@ export const api = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+
+  startCBTExam: (questionCount: number, durationMinutes: number, token: string) =>
+    request<CBTExamStartResponse>(
+      "/cbt-exam/start",
+      {
+        method: "POST",
+        body: JSON.stringify({ question_count: questionCount, duration_minutes: durationMinutes }),
+      },
+      token
+    ),
+
+  submitCBTExamAnswer: (sessionId: string, questionId: string, selectedOptionId: string, token: string) =>
+    request<{ received: boolean; message: string }>(
+      `/cbt-exam/${sessionId}/answer`,
+      {
+        method: "POST",
+        body: JSON.stringify({ question_id: questionId, selected_option_id: selectedOptionId }),
+      },
+      token
+    ),
+
+  submitCBTExam: (sessionId: string, token: string) =>
+    request<CBTExamSubmitResponse>(`/cbt-exam/${sessionId}/submit`, { method: "POST" }, token),
 };

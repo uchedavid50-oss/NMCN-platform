@@ -107,6 +107,12 @@ export default function DashboardPage() {
           ⚡ Speed round
         </Link>
         <Link
+          href="/cbt-exam"
+          className="inline-block rounded-md bg-ink-navy px-6 py-3 font-body font-medium text-chart-cream transition hover:bg-vital-teal"
+        >
+          🎓 CBT Center
+        </Link>
+        <Link
           href="/analytics"
           className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
         >

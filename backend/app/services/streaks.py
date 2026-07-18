@@ -4,13 +4,14 @@ from sqlalchemy.orm import Session
 
 from app.core.time import utcnow
 from app.models.attempt import Attempt
+from app.models.cbt_exam import CBTExamSession
 from app.models.speed_round import SpeedRoundResult
 
 
 def compute_streak(db: Session, user_id) -> tuple[int, bool]:
     """A day counts toward the streak if the student did ANY of: a practice
-    attempt, a mock exam attempt, or a speed round — not just one specific
-    activity. Returns (current_streak_days, played_today)."""
+    attempt, a mock exam attempt, a speed round, or a full CBT exam session —
+    not just one specific activity. Returns (current_streak_days, played_today)."""
     activity_dates = set()
 
     for (started_at,) in db.query(Attempt.started_at).filter(Attempt.user_id == user_id).all():
@@ -20,6 +21,10 @@ def compute_streak(db: Session, user_id) -> tuple[int, bool]:
     for (played_at,) in db.query(SpeedRoundResult.played_at).filter(SpeedRoundResult.user_id == user_id).all():
         if played_at:
             activity_dates.add(played_at.date())
+
+    for (started_at,) in db.query(CBTExamSession.started_at).filter(CBTExamSession.user_id == user_id).all():
+        if started_at:
+            activity_dates.add(started_at.date())
 
     today = utcnow().date()
     played_today = today in activity_dates
