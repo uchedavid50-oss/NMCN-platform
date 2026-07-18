@@ -13,6 +13,10 @@ export default function NoteDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<{ question: string; reply: string }[]>([]);
+  const [asking, setAsking] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !token) return;
@@ -43,6 +47,21 @@ export default function NoteDetailPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  async function handleAsk() {
+    if (!token || !chatMessage.trim()) return;
+    setAsking(true);
+    setChatError(null);
+    try {
+      const result = await api.askAboutNote(noteId, chatMessage, token);
+      setChatHistory((prev) => [...prev, { question: chatMessage, reply: result.reply }]);
+      setChatMessage("");
+    } catch (err) {
+      setChatError(err instanceof ApiError ? err.message : "Couldn't get a response right now.");
+    } finally {
+      setAsking(false);
+    }
   }
 
   if (loading || !user) {
@@ -78,6 +97,44 @@ export default function NoteDetailPage() {
       </div>
 
       {error && <p className="mt-4 text-sm text-pulse-coral">{error}</p>}
+
+      <div className="mt-8 rounded-md border border-mist bg-card-bg p-5">
+        <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
+          Ask about these notes
+        </p>
+        <p className="mt-1 text-sm text-graphite">
+          Ask anything about this specific document — the tutor answers grounded in what you
+          actually uploaded.
+        </p>
+
+        {chatHistory.map((exchange, i) => (
+          <div key={i} className="mt-4 border-t border-mist pt-3">
+            <p className="text-sm font-medium text-ink-navy">{exchange.question}</p>
+            <p className="mt-1 text-sm text-graphite">{exchange.reply}</p>
+          </div>
+        ))}
+
+        {chatError && <p className="mt-3 text-sm text-pulse-coral">{chatError}</p>}
+
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={chatMessage}
+            onChange={(e) => setChatMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAsk()}
+            placeholder="Ask a question about this note…"
+            disabled={asking}
+            className="flex-1 rounded-md border border-mist px-3 py-2 text-sm focus:border-vital-teal focus:outline-none"
+          />
+          <button
+            onClick={handleAsk}
+            disabled={asking || !chatMessage.trim()}
+            className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal disabled:opacity-50"
+          >
+            {asking ? "Asking…" : "Ask"}
+          </button>
+        </div>
+      </div>
 
       {questions && questions.length === 0 && !generating && (
         <p className="mt-10 text-graphite">

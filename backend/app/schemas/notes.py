@@ -18,6 +18,10 @@ class GenerateQuestionsRequest(BaseModel):
     count: int = Field(default=5, ge=1, le=10)
 
 
+class NotesAskRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=500)
+
+
 class GeneratedOptionOut(BaseModel):
     id: uuid.UUID
     text: str

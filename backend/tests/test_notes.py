@@ -150,3 +150,59 @@ def test_generate_questions_404_for_nonexistent_note(client, auth_headers, monke
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+def test_ask_about_note_grounded_response(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
+    # _call_gemini (shared with /tutor/ask) uses response.text directly here —
+    # only /generate-questions requests structured JSON output.
+    monkeypatch.setattr(notes_module.genai, "Client", _make_fake_client("The SA node paces the heart."))
+
+    upload = client.post(
+        "/notes/upload",
+        files={"file": ("notes.txt", b"The SA node is the heart's natural pacemaker.", "text/plain")},
+        headers=auth_headers,
+    ).json()
+
+    response = client.post(
+        f"/notes/{upload['id']}/ask",
+        json={"message": "What does the SA node do?"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["reply"] == "The SA node paces the heart."
+
+
+def test_ask_about_note_404_for_other_users_note(client, auth_headers, make_user, monkeypatch):
+    monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
+    upload = client.post(
+        "/notes/upload",
+        files={"file": ("notes.txt", b"Some private notes.", "text/plain")},
+        headers=auth_headers,
+    ).json()
+
+    _, other_token = make_user()
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    response = client.post(
+        f"/notes/{upload['id']}/ask",
+        json={"message": "What are these notes about?"},
+        headers=other_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_ask_about_note_requires_api_key(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(settings, "google_api_key", "")
+    upload = client.post(
+        "/notes/upload",
+        files={"file": ("notes.txt", b"Some notes.", "text/plain")},
+        headers=auth_headers,
+    ).json()
+
+    response = client.post(
+        f"/notes/{upload['id']}/ask",
+        json={"message": "Explain this"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 500

@@ -9,7 +9,7 @@ from google.genai.errors import APIError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
-from app.api.tutor import _check_tutor_available
+from app.api.tutor import _call_gemini, _check_tutor_available
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.generated_option import GeneratedOption
@@ -21,7 +21,9 @@ from app.schemas.notes import (
     GenerateQuestionsRequest,
     GeneratedQuestionOut,
     NoteOut,
+    NotesAskRequest,
 )
+from app.schemas.tutor import TutorAskResponse
 from app.services.note_extraction import MAX_UPLOAD_BYTES, extract_text_from_upload
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -191,3 +193,44 @@ def get_generated_questions(
         .filter(GeneratedQuestion.note_id == note_id)
         .all()
     )
+
+
+@router.post("/{note_id}/ask", response_model=TutorAskResponse)
+def ask_about_note(
+    note_id: uuid.UUID,
+    payload: NotesAskRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Teaching mode grounded in a student's own uploaded notes — distinct
+    from /tutor/ask (Module 14), which is grounded in the official question
+    bank and requires having attempted a specific question first. This one
+    is free-form, but strictly scoped to the content of one uploaded note."""
+    _check_tutor_available(db, current_user.id)
+
+    note = (
+        db.query(UploadedNote)
+        .filter(UploadedNote.id == note_id, UploadedNote.user_id == current_user.id)
+        .first()
+    )
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    system_prompt = (
+        "You are a patient, encouraging tutor helping a Nigerian nursing student prepare for the "
+        "NMCN Professional Qualifying Examination. The student has uploaded their own study notes "
+        "below, and is asking a question about them.\n\n"
+        f"Student's notes:\n\n{note.extracted_text}\n\n"
+        "Answer based on these notes wherever they cover the topic. If the student's question goes "
+        "beyond what's in their notes, say so honestly rather than pretending the answer came from "
+        "their material — you may still add general nursing knowledge to help, but clearly mark it "
+        "as additional context beyond their notes, not something their notes already said. Keep your "
+        "response under roughly 150 words unless the question genuinely needs more."
+    )
+
+    reply_text = _call_gemini(system_prompt, payload.message)
+
+    db.add(TutorRequest(user_id=current_user.id))
+    db.commit()
+
+    return TutorAskResponse(reply=reply_text)

@@ -303,4 +303,11 @@ export const api = {
 
   getGeneratedQuestions: (noteId: string, token: string) =>
     request<GeneratedQuestion[]>(`/notes/${noteId}/questions`, {}, token),
+
+  askAboutNote: (noteId: string, message: string, token: string) =>
+    request<TutorReply>(
+      `/notes/${noteId}/ask`,
+      { method: "POST", body: JSON.stringify({ message }) },
+      token
+    ),
 };
