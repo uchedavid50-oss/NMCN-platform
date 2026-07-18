@@ -197,6 +197,23 @@ export interface GeneratedQuestion {
   options: GeneratedOption[];
 }
 
+export interface SpeedRoundQuestion {
+  id: string;
+  stem: string;
+  options: { id: string; text: string; is_correct: boolean }[];
+}
+
+export interface SpeedRoundSubmitResult {
+  score_percentage: number;
+  current_streak: number;
+  played_today: boolean;
+}
+
+export interface StreakInfo {
+  current_streak: number;
+  played_today: boolean;
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -310,4 +327,26 @@ export const api = {
       { method: "POST", body: JSON.stringify({ message }) },
       token
     ),
+
+  startSpeedRound: (token: string, topicId?: string, count = 10) => {
+    const params = new URLSearchParams({ count: String(count) });
+    if (topicId) params.set("topic_id", topicId);
+    return request<SpeedRoundQuestion[]>(`/games/speed-round/start?${params}`, {}, token);
+  },
+
+  submitSpeedRound: (totalQuestions: number, correctAnswers: number, token: string, topicId?: string) =>
+    request<SpeedRoundSubmitResult>(
+      "/games/speed-round/submit",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          topic_id: topicId ?? null,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+        }),
+      },
+      token
+    ),
+
+  getStreak: (token: string) => request<StreakInfo>("/games/streak", {}, token),
 };

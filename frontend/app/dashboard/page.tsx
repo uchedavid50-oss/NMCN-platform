@@ -1,13 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireAuth } from "@/lib/use-require-auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { api } from "@/lib/api";
 
 export default function DashboardPage() {
   const { logout } = useAuth();
-  const { user, loading } = useRequireAuth();
+  const { user, token, loading } = useRequireAuth();
+  const [streak, setStreak] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.getStreak(token).then((s) => setStreak(s.current_streak)).catch(() => setStreak(0));
+  }, [token]);
 
   if (loading || !user) {
     return (
@@ -37,7 +45,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-10 grid grid-cols-2 gap-4 font-mono text-sm">
+      <div className="mt-10 grid grid-cols-2 gap-4 font-mono text-sm sm:grid-cols-3">
         <div className="rounded-md border border-mist p-4">
           <p className="text-graphite">Role</p>
           <p className="mt-1 text-lg text-ink-navy">{user.role}</p>
@@ -46,14 +54,26 @@ export default function DashboardPage() {
           <p className="text-graphite">Subscription</p>
           <p className="mt-1 text-lg text-ink-navy">{user.subscription_status}</p>
         </div>
+        <div className="rounded-md border border-mist p-4">
+          <p className="text-graphite">Streak</p>
+          <p className="mt-1 text-lg text-pulse-coral">
+            {streak === null ? "…" : `🔥 ${streak} day${streak === 1 ? "" : "s"}`}
+          </p>
+        </div>
       </div>
 
-      <div className="mt-10 flex gap-3">
+      <div className="mt-10 flex flex-wrap gap-3">
         <Link
           href="/subjects"
           className="inline-block rounded-md bg-vital-teal px-6 py-3 font-body font-medium text-chart-cream transition hover:bg-ink-navy"
         >
           Start practicing
+        </Link>
+        <Link
+          href="/games/speed-round"
+          className="inline-block rounded-md bg-pulse-coral px-6 py-3 font-body font-medium text-chart-cream transition hover:bg-ink-navy"
+        >
+          ⚡ Speed round
         </Link>
         <Link
           href="/analytics"
