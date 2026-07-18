@@ -11,10 +11,20 @@ export default function DashboardPage() {
   const { logout } = useAuth();
   const { user, token, loading } = useRequireAuth();
   const [streak, setStreak] = useState<number | null>(null);
+  const [playedToday, setPlayedToday] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    api.getStreak(token).then((s) => setStreak(s.current_streak)).catch(() => setStreak(0));
+    api
+      .getStreak(token)
+      .then((s) => {
+        setStreak(s.current_streak);
+        setPlayedToday(s.played_today);
+      })
+      .catch(() => {
+        setStreak(0);
+        setPlayedToday(false);
+      });
   }, [token]);
 
   if (loading || !user) {
@@ -44,6 +54,27 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {playedToday === false && (
+        <div className="mt-6 flex items-center justify-between rounded-md border border-pulse-coral bg-pulse-coral/10 px-5 py-4">
+          <p className="text-sm text-ink-navy">
+            {streak && streak > 0 ? (
+              <>
+                🔥 You have a <strong>{streak}-day streak</strong> — practice today to keep it
+                alive!
+              </>
+            ) : (
+              <>Haven&apos;t practiced today yet — even one quick round starts a streak.</>
+            )}
+          </p>
+          <Link
+            href="/games/speed-round"
+            className="ml-4 whitespace-nowrap rounded-md bg-pulse-coral px-4 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy"
+          >
+            Quick round →
+          </Link>
+        </div>
+      )}
 
       <div className="mt-10 grid grid-cols-2 gap-4 font-mono text-sm sm:grid-cols-3">
         <div className="rounded-md border border-mist p-4">

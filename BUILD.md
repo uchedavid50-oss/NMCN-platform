@@ -784,3 +784,250 @@ If all of that behaves, Module 20 is done — and with it, every P0 and P1 featu
 ## What's next
 
 Remaining P2 items from the charter: dark mode, daily challenges, leaderboards (optional per the charter itself). Also still open: tutor conversation memory, and the recurring, still-unaddressed question of real student feedback.
+
+## Module 21: Dark Mode — Run It
+
+Adds a dark/light toggle, persisted per-browser, defaulting to system preference on first visit. No backend changes — pure frontend.
+
+**How it works, for future reference:** rather than adding `dark:` variants to every single element across every page (a huge, error-prone undertaking), the existing design tokens (`ink-navy`, `chart-cream`, `vital-teal`, `pulse-coral`, `graphite`, `mist`) were redefined as CSS variables that flip values when a `.dark` class is present on `<html>`. Since every page already used these tokens consistently, the whole app re-themes from one central change in `globals.css` + `tailwind.config.js`. A new `card-bg` token was added for the few places using hardcoded white card backgrounds (practice feedback, flashcards, study plan box), replacing `bg-white` so those respect the theme too.
+
+### No rebuild needed for dependencies
+
+Pure code — no new packages. `docker compose restart frontend` should be enough.
+
+### Test it
+
+1. Open the landing page (`/`) — you should see a small "🌙 Dark" toggle button in the top right.
+2. Click it — the whole page should invert to a dark navy background with light text, and the toggle should now say "☀️ Light".
+3. Refresh the page — the dark preference should persist (stored in `localStorage`).
+4. Log in and go to `/dashboard` — there should be a matching toggle next to "Log out", and it should already reflect whatever you set on the landing page (same setting, shared across the whole site).
+5. Navigate to `/subjects`, `/practice/[topicId]`, `/analytics`, `/flashcards/[topicId]` — confirm they all render correctly in dark mode too, even without a toggle button visible on those specific pages yet (the theme state is global; only the *button* is currently on two pages).
+
+### Known gap, flagged on purpose
+
+The toggle button itself only appears on the landing page and dashboard — not on every single page. The dark mode *works* everywhere (since it's a global CSS variable swap), but a student mid-quiz can't flip the switch without navigating back to one of those two pages first. Worth adding the toggle to a persistent nav/header component in a future session rather than duplicating it page-by-page.
+
+If dark mode toggles correctly and persists across a refresh, Module 21 is done.
+
+---
+
+## Project Status: Build Phase Complete
+
+Every module from the original charter — plus everything discovered, hardened, and fixed along the way — is built, tested, and deployed live on Railway:
+
+**Backend:** auth, question bank with admin gating, practice mode, timed mock exams, Paystack payments with real webhook verification, analytics, an AI tutor (explain-answers + weak-topic study plans) backed by Gemini, flashcards, 40+ automated tests, and a production-ready deployment with fail-fast safety checks.
+
+**Frontend:** a full Next.js app with a distinctive design system, covering every one of those flows end to end in a real browser, plus dark mode.
+
+**Hardening along the way:** the Module 3 answer-key leak (closed in Module 8), abandoned mock attempts (Module 17), a real Gemini truncation bug found and fixed live in production (post-Module 19), a CORS gap, two timezone bugs (frontend and backend), and a dependency-pinning conflict — all found, diagnosed, and fixed rather than papered over.
+
+**What's genuinely left**, none of it blocking: tutor conversation memory, daily challenges/leaderboards (marked optional in the original charter), and the still-unanswered question of what real nursing students actually need next — which no amount of further building from here can answer as well as watching real people use what already exists.
+
+---
+
+## New Feature Track: Notes, Teaching Mode, and Games
+
+## Module 22: Notes → AI-Generated Practice Questions — Run It
+
+A student uploads their own study notes (.txt, .pdf, .docx), and Gemini generates practice questions grounded in that specific material.
+
+**Two safety/design decisions baked into this module, important to understand:**
+
+1. **AI-generated questions live in an entirely separate set of database tables** (`generated_questions`/`generated_options`, distinct from `questions`/`options`) and are private to whoever uploaded the notes — never mixed into the shared, admin-vetted question bank. If a student's notes have an error, or Gemini misreads something, that stays contained to their own personal deck, clearly labeled "AI-generated · private to you" in the UI.
+2. **Shares the same daily Gemini budget** as the tutor and study plans (Module 15's `DAILY_TUTOR_LIMIT`) — one unified cost cap across every AI feature.
+
+**Known limitations, deliberate for MVP:**
+- Only works on text-based PDFs — scanned/image PDFs have no extractable text and will be rejected with a clear message (OCR would be a future enhancement).
+- Long documents get truncated to the first ~12,000 characters — keeps token cost and generation quality predictable, but means only the first several pages of a long document get used.
+- Malformed questions from Gemini (wrong option count, multiple/zero correct answers) are silently skipped rather than failing the whole batch — you might ask for 5 and get 3-4 back.
+
+### Apply the new dependencies and migration
+
+```
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Run the automated tests (free — mocks the Gemini call)
+
+```
+docker compose exec backend pytest -v tests/test_notes.py
+```
+
+Should show 6 passing tests, including one confirming malformed questions get filtered out while well-formed ones survive, and one confirming a note's generated questions are 404 to anyone except the uploader.
+
+### Test it for real in the browser
+
+1. From the dashboard, click **"My notes"**.
+2. Upload a short `.txt` file with some study content (even a paragraph works for testing).
+3. Click into the uploaded note, then click **"Generate 5 more"**.
+4. After a few seconds, you should see real questions grounded in your uploaded text, each showing "Click to reveal answer" — click one to confirm it flips to show the answer and explanation.
+5. Try uploading an unsupported file type (e.g. `.jpg`) — should get a clear rejection message, not a crash.
+
+If real questions generate from your actual uploaded content, Module 22 is done.
+
+## What's next
+
+Two more pieces of this feature track, in order: **Module 23** (AI tutor "teaching mode" grounded in a student's own uploaded notes, distinct from the official-question-bank-grounded tutor from Module 14), and **Module 24** (daily streak + speed-round challenge game).
+
+## Module 23: Notes-Grounded Teaching Mode — Run It
+
+Adds free-form Q&A about a student's own uploaded notes — new endpoint `POST /notes/{note_id}/ask`, and a chat box on the note detail page. Distinct from Module 14's `/tutor/ask`, which only discusses official question-bank content after an actual attempt.
+
+**Important honesty framing baked into the system prompt:** the tutor is instructed to answer from the notes wherever they cover the topic, but to **say so explicitly** if a question goes beyond what's in the uploaded material — it can still add general nursing knowledge to help, but must clearly separate "this is in your notes" from "this is additional context beyond your notes." Without this, a student could easily mistake AI-added general knowledge for something their own notes actually said.
+
+Same shared daily Gemini budget as everything else (Module 15).
+
+### No new migration needed
+
+Reuses the existing `uploaded_notes` table — pure new endpoint and UI.
+
+### Run the automated tests
+
+```
+docker compose up --build
+docker compose exec backend pytest -v tests/test_notes.py
+```
+
+Should show 10 passing tests now (7 from Module 22 + 3 new: a grounded response test, an ownership-check test, and an API-key-required test).
+
+### Test it live
+
+1. Go to one of your uploaded notes (e.g. the nursing-content one from Module 22 testing).
+2. You should see a new **"Ask about these notes"** box above the generated questions.
+3. Ask something the notes actually cover (e.g. "why does that BP cuff sizing matter?") — should get a real, grounded answer.
+4. Ask something clearly outside the notes' scope (e.g. "what's the treatment for a fracture?" if the notes don't mention fractures) — the tutor should be honest that this isn't covered in the uploaded notes, rather than confidently answering as if it were.
+
+If both cases behave correctly — grounded when the content exists, honest when it doesn't — Module 23 is done.
+
+## What's next
+
+One piece left in this feature track: **Module 24** (daily streak + speed-round challenge game).
+
+## Module 24: Daily Streak + Speed-Round Challenge — Run It
+
+Adds a fast, arcade-style quiz mode (`/games/speed-round`) and a daily streak counter shown on the dashboard.
+
+**How the streak works:** any activity counts — a practice session, a mock exam, or a speed round. It doesn't reset the moment a day passes with no activity; it only breaks once a full day goes by with zero activity of any kind. Computed fresh each time from `Attempt` and `SpeedRoundResult` timestamps — no separate "streak" counter to keep in sync and potentially drift out of correctness.
+
+**Design decision, consistent with flashcards (Module 20):** speed-round questions deliberately include `is_correct` in the response — unlike practice/mock mode, this is a casual game, and instant feedback per question is the whole point of the arcade mechanic, not something to guard against.
+
+### Apply the new migration
+
+```
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Run the automated tests
+
+```
+docker compose exec backend pytest -v tests/test_games.py
+```
+
+Should show 9 passing tests, including direct unit tests of the streak logic itself (consecutive days, a broken streak from a gap, and the "played yesterday but not yet today" edge case that keeps a streak alive without requiring play at the exact same time every day).
+
+### Test it live
+
+1. From the dashboard, you should see a new **"Streak"** stat card and a coral **"⚡ Speed round"** button.
+2. Click it — you'll see your current streak (0 if you haven't played), then **"Start speed round."**
+3. Click Start — you'll get up to 10 random questions from across your whole question bank, 8 seconds each.
+4. Pick an answer (or let the timer run out) — it should immediately show correct (teal) / incorrect (coral) highlighting, then auto-advance after under a second.
+5. After the last question, you should land on a summary screen: final score percentage, correct count, and your updated streak.
+6. Go back to the dashboard — the streak stat card should now reflect today's play.
+7. Click "Play again" from the summary screen — should start a fresh round with a new random question set.
+
+If the full round completes and the streak updates correctly, Module 24 is done — and with it, this entire feature track (notes → AI questions, notes-grounded teaching mode, and the streak/speed-round game).
+
+---
+
+## Feature Track Complete
+
+Beyond the original charter, this session added: AI-generated practice questions from a student's own uploaded notes (private, clearly separated from the official question bank), a second tutor mode answering questions grounded specifically in those notes (with an explicit honesty rule about what is and isn't actually in the material), and a daily streak + arcade-style speed round to make regular practice more engaging. All of it deployed live, all of it covered by automated tests, all of it sharing the same cost-protected Gemini budget rather than opening new unguarded spending surfaces.
+
+## Module 25: Leaderboard — Run It
+
+The last charter item explicitly marked "optional." New `/leaderboard` page showing top streaks and best speed-round scores.
+
+**Privacy design, the whole point of this module:** opt-in only. A student's streak and scores are never visible to anyone else unless they explicitly check "Show me on the leaderboard," and even then only under a display name they choose themselves — never their real email. Two new nullable/defaulted columns on `users` (`leaderboard_opt_in`, `display_name`), both defaulting to fully private.
+
+### Apply the new migration
+
+```
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Run the automated tests
+
+```
+docker compose exec backend pytest -v tests/test_games.py
+```
+
+Should show 12 passing now (9 from Module 24 + 3 new), including a test confirming a student who hasn't opted in **never** appears on the leaderboard, even after playing.
+
+### Test it live
+
+1. From the dashboard, click **"🏆 Leaderboard"**.
+2. You should see an opt-in checkbox (unchecked by default) and a display name field.
+3. Check the box, enter a display name, click "Save preference" — you should now appear in the list below with your current streak and best speed-round score.
+4. Uncheck the box and save again — confirm you disappear from the list.
+5. If you have a second test account, confirm it doesn't show up unless it also opts in.
+
+If opting in/out correctly controls visibility, Module 25 is done — and with it, every feature from the original charter (including the ones marked optional) is built, tested, and live.
+
+## Module 26: Badges + Completion Certificate — Run It
+
+Adds a badges page (computed dynamically from existing data — no new tables at all) and a downloadable PDF certificate for students who've shown sustained engagement.
+
+**Important honesty framing, the core design decision of this module:** the certificate is explicitly labeled "Certificate of Exam-Readiness Practice," not an NMCN credential — the PDF itself states in its footer that it is **not** an official credential issued by the Nursing and Midwifery Council of Nigeria and does not guarantee real exam results. The eligibility bar is deliberately non-trivial (3+ finished mock exams, 70%+ average) so it represents genuine practice, not a rubber stamp.
+
+### New dependency, no migration
+
+```
+docker compose up --build
+```
+
+(Reportlab for PDF generation — no new database tables, since badges/eligibility are computed live from `attempts` each time.)
+
+### Run the automated tests
+
+```
+docker compose exec backend pytest -v tests/test_achievements.py
+```
+
+Should show 7 passing, including one that actually verifies the downloaded file starts with `%PDF` (a real, valid PDF, not just a 200 status).
+
+### Test it live
+
+1. From the dashboard, click **"🏅 Achievements"**.
+2. You should see a badges grid — locked (🔒) badges dimmed, any already-earned ones lit up with 🏅.
+3. The certificate section should say you're not yet eligible, with a clear reason (e.g. "Complete at least 3 mock exams").
+4. Complete 3 mock exams with a 70%+ average (reuse your existing test topic), then refresh this page — the certificate section should now show a working **"Download certificate (PDF)"** button.
+5. Click it, open the downloaded PDF, and confirm the disclaimer text at the bottom is present and legible.
+
+If badges reflect your real progress and the certificate downloads correctly with the disclaimer intact, Module 26 is done.
+
+## What's next
+
+Every charter feature, every explicitly-requested feature (notes, teaching mode, games), and now badges/certificates are built, tested, and live. This is a genuinely feature-complete platform at this point — further additions should come from real usage, not more speculative building.
+
+## Module 27: Streak Reminder Banner — Run It
+
+Pure frontend, zero backend changes — reuses the existing `/games/streak` endpoint's `played_today` field, which was already being returned but not yet used on the dashboard.
+
+A coral banner appears on the dashboard whenever a student hasn't practiced yet today: if they have an active streak, it warns them it's at risk; if they don't, it gently encourages starting one — either way linking straight to a quick speed round.
+
+**Why this instead of real push notifications:** true push notifications need a service worker, VAPID key generation, and browser permission prompts — a meaningfully bigger and riskier lift to deploy correctly. This gets most of the "nudge to keep practicing" value with none of that infrastructure or risk. Real push notifications remain a valid future addition if you want them later, just scoped as its own module rather than bundled in here.
+
+### No rebuild needed for dependencies
+
+Pure code — `docker compose restart frontend` is enough.
+
+### Test it
+
+1. Go to the dashboard on an account that hasn't played today (or wait until you have a streak going, then check the next day before playing).
+2. You should see a coral banner — either "keep your streak alive" (if streak > 0) or a gentle nudge to start one (if streak is 0), with a "Quick round →" button.
+3. Complete a speed round, then refresh the dashboard — the banner should disappear once `played_today` is true.
+
+If the banner shows/hides correctly based on today's activity, Module 27 is done.
