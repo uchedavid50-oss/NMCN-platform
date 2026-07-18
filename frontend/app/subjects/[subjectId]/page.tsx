@@ -55,6 +55,12 @@ export default function SubjectTopicsPage() {
             <span className="font-body text-lg text-ink-navy">{topic.name}</span>
             <div className="flex gap-2">
               <Link
+                href={`/flashcards/${topic.id}`}
+                className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal"
+              >
+                Flashcards
+              </Link>
+              <Link
                 href={`/practice/${topic.id}`}
                 className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal"
               >

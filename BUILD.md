@@ -696,3 +696,91 @@ If signup/login/practice all work on the live URL, Module 18 is done — and you
 ## What's next
 
 You now have something you can actually send a link to a nursing student and say "try this." That's the natural point to pause and gather real feedback, or continue with P2 features / AI Tutor expansion armed with a live URL to test changes against immediately.
+
+## Module 19: AI-Generated Study Plans — Run It
+
+Closes out the last untouched pieces of the original AI Tutor spec: "recommend study plans" and "identify weak topics." New endpoint `POST /tutor/study-plan`, built entirely on the existing weak-topic logic from Module 7 — "weak" means the exact same thing here as it does on your analytics dashboard, not a separate definition invented for this feature.
+
+**Cost-conscious design:** if a student has no weak topics yet (either too little data, or genuinely doing fine), the endpoint returns immediately with an encouraging message and **never calls Gemini at all** — no API cost for the "nothing to report" case. It only spends a real API call when there's an actual weak topic to build a plan around. Study plan requests count against the same shared daily limit as regular tutor questions (Module 15) — one budget, not two.
+
+### No migration needed
+
+Reuses existing tables — pure code, new endpoint and a new frontend section.
+
+### Run the automated tests
+
+```
+docker compose up --build
+docker compose exec backend pytest -v tests/test_tutor.py
+```
+
+Should show 6 tests now (4 from before + 2 new): one confirming a brand-new student gets a response with **zero** API calls needed, one confirming a genuinely weak topic gets identified and a real (mocked, in the test) plan generated.
+
+### Test it for real in the browser
+
+1. Go to `/analytics`. You should see a new **"Your study plan"** section with a **"Get my study plan"** button.
+2. If you don't have 3+ answered questions below 60% in any topic yet, click it anyway — you should get the "nothing weak yet" message instantly (no real API cost).
+3. To see the real thing: go answer the same question wrong 3 times across 3 separate practice attempts in one topic (same trick as Module 13's testing), then return to `/analytics` and click the button again.
+4. This time it should show "Based on: [your topic name]" followed by a real, Gemini-generated plan referencing that specific topic.
+5. Click "Regenerate" — should call Gemini again and produce a fresh (possibly slightly different) plan.
+
+If both the free path (no weak topics) and the real Gemini path work, Module 19 is done — and with it, the full original AI Tutor specification from the charter is built.
+
+## What's next
+
+Every explicit goal from the original charter's AI Tutor section is now implemented: explain answers (Module 14), recommend study plans and identify weak topics (Module 19). What's left is genuinely open-ended: P2 polish, tutor conversation memory, or — still the most valuable next step — real student feedback on what exists today.
+
+## Hotfix: Truncated Gemini Responses (thinking tokens)
+
+**Bug found during real-world testing on the live Railway deployment:** the study plan came back cut off mid-sentence ("Hello! Let's get you fully prepared to ace your NM"). This wasn't a frontend bug or a network issue — it's a well-documented behavior of Gemini's newer models: **Gemini 3.x "thinks" before answering by default, and that invisible reasoning is billed against the same `max_output_tokens` budget as the visible response.** Our 400-token limit was almost entirely consumed by reasoning the student never saw, leaving barely enough left for a few words of actual answer.
+
+**Fix:** every Gemini call now explicitly sets `thinking_level="low"` (appropriate for straightforward explanations, not multi-step reasoning problems), and the token budget was raised from 400 to 1024 as a safety margin. A new regression test (`test_gemini_call_sets_thinking_level_to_avoid_truncation`) locks this in so it can't silently regress.
+
+**Update after first deploy attempt:** the fix above was correct in concept but caused a new error — `pydantic_core.ValidationError: Extra inputs are not permitted [thinking_level]`. The actual root cause: the `google-genai` library version we'd had pinned since Module 14 (`1.15.0`) predates Google adding `thinking_level` support entirely — that version only recognizes the older `thinking_budget` field. Bumped to `google-genai==1.51.0`, the version where `thinking_level` support was actually added.
+
+### Deploy this fix
+
+```
+git add .
+git commit -m "Fix Gemini response truncation (thinking tokens eating the token budget)"
+git push
+```
+
+Railway will auto-redeploy. Once it's live, retry **"Get my study plan"** on `/analytics` (or ask the tutor a question in practice mode) — the response should now come back as a complete, un-truncated answer.
+
+### Run the tests too
+
+```
+docker compose exec backend pytest -v tests/test_tutor.py
+```
+
+Should show 7 tests passing now (6 from Module 19 + this new regression test).
+
+## Module 20: Flashcards — Run It
+
+Adds a P2 feature from the original charter: quick front/back flashcard review, built directly on the existing question bank. New endpoint `GET /flashcards?topic_id=X`, and a `/flashcards/[topicId]` page with click-to-flip cards and Previous/Next navigation. No timer, no scoring, no attempt tracking — pure review.
+
+**Important design decision, different from every other student-facing endpoint so far:** `/flashcards` is deliberately **open to any logged-in student** — it shows the correct answer immediately, on purpose. This is the opposite of `/questions` (admin-only since Module 8) and `/practice`/`/mock` (which hide answers until you commit to a choice). Flashcards are an explicit "just show me the answer" study tool, not a quiz — so there's nothing to leak here.
+
+### Apply and test
+
+```
+docker compose up --build
+docker compose exec backend pytest -v tests/test_flashcards.py
+```
+
+Should show 4 passing tests, including one confirming flashcards work for a **regular student** (not just an admin) — the opposite assertion from the Module 8 question-bank tests, and worth understanding why that difference is intentional, not a security hole.
+
+### Test it in the browser
+
+1. Go to a topic's page — you should now see **three** buttons: "Flashcards," "Practice," "Mock exam."
+2. Click "Flashcards" — should show "Card 1 of N" with the question stem showing, answer hidden.
+3. Click the card — it should flip to show the correct answer and explanation.
+4. Click "Next card" / "Previous card" to navigate — flipping state should reset when you change cards.
+5. Try a topic with zero questions (if you have one) — should show a friendly "no flashcards yet" message instead of an empty broken page.
+
+If all of that behaves, Module 20 is done — and with it, every P0 and P1 feature from the original charter, plus one P2 feature, is built.
+
+## What's next
+
+Remaining P2 items from the charter: dark mode, daily challenges, leaderboards (optional per the charter itself). Also still open: tutor conversation memory, and the recurring, still-unaddressed question of real student feedback.

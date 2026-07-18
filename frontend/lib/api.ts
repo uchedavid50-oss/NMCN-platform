@@ -170,6 +170,12 @@ export interface StudyPlan {
   plan: string;
 }
 
+export interface Flashcard {
+  question_id: string;
+  front: string;
+  back: string;
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -255,4 +261,7 @@ export const api = {
 
   getStudyPlan: (token: string) =>
     request<StudyPlan>("/tutor/study-plan", { method: "POST" }, token),
+
+  getFlashcards: (topicId: string, token: string) =>
+    request<Flashcard[]>(`/flashcards?topic_id=${topicId}`, {}, token),
 };
