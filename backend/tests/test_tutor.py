@@ -10,8 +10,11 @@ class _FakeResponse:
 
 
 class _FakeModels:
+    last_call_kwargs = None
+
     @staticmethod
     def generate_content(**kwargs):
+        _FakeModels.last_call_kwargs = kwargs
         return _FakeResponse("This is a mocked tutor explanation.")
 
 
@@ -154,3 +157,34 @@ def test_study_plan_identifies_weak_topic_and_generates_plan(
     assert body["has_weak_topics"] is True
     assert "cardiovascular" in body["weak_topic_names"][0].lower()
     assert body["plan"] == "This is a mocked tutor explanation."
+
+
+def test_gemini_call_sets_thinking_level_to_avoid_truncation(
+    client, auth_headers, monkeypatch, topic_with_question
+):
+    """Regression test for a real production bug: Gemini 3.x models 'think'
+    before answering by default, and that invisible reasoning is billed
+    against the same max_output_tokens budget as the visible response —
+    without capping thinking_level, real responses came back truncated
+    mid-sentence. This confirms every call explicitly sets thinking_level,
+    so this can't silently regress."""
+    monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
+    monkeypatch.setattr(tutor_module.genai, "Client", _FakeGenaiClient)
+    topic, question = topic_with_question
+
+    start = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=auth_headers).json()
+    option_id = question["options"][0]["id"]
+    client.post(
+        f"/practice/{start['attempt_id']}/answer",
+        json={"question_id": question["id"], "selected_option_id": option_id},
+        headers=auth_headers,
+    )
+    client.post(
+        "/tutor/ask",
+        json={"question_id": question["id"], "message": "Explain again"},
+        headers=auth_headers,
+    )
+
+    config = _FakeModels.last_call_kwargs["config"]
+    assert config.thinking_config is not None
+    assert config.thinking_config.thinking_level == settings.gemini_thinking_level

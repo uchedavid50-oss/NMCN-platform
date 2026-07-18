@@ -18,7 +18,8 @@ class Settings(BaseSettings):
 
     google_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"
-    tutor_max_tokens: int = 400
+    gemini_thinking_level: str = "low"
+    tutor_max_tokens: int = 1024
 
     class Config:
         env_file = ".env"

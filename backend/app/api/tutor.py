@@ -85,6 +85,15 @@ def _call_gemini(system_prompt: str, user_message: str) -> str:
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 max_output_tokens=settings.tutor_max_tokens,
+                # Gemini 3.x models "think" before answering by default, and that
+                # invisible reasoning is billed against the same max_output_tokens
+                # budget as the visible response — a real, widely-reported gotcha,
+                # not specific to us. Without this, we saw responses cut off
+                # mid-sentence because thinking silently ate almost the entire
+                # token budget before any visible text was written. "low" keeps
+                # answers fast and cheap for this use case (simple explanations,
+                # not multi-step reasoning problems).
+                thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
             ),
         )
     except APIError as exc:
