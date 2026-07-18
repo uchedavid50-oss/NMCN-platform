@@ -93,6 +93,12 @@ export default function DashboardPage() {
         >
           🏆 Leaderboard
         </Link>
+        <Link
+          href="/achievements"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          🏅 Achievements
+        </Link>
       </div>
     </main>
   );

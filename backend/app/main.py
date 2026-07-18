@@ -14,6 +14,7 @@ from app.api.tutor import router as tutor_router
 from app.api.flashcards import router as flashcards_router
 from app.api.notes import router as notes_router
 from app.api.games import router as games_router
+from app.api.achievements import router as achievements_router
 from app.core.config import settings
 
 DEV_DEFAULT_JWT_SECRET = "dev-only-change-this-before-any-real-deployment"
@@ -55,6 +56,7 @@ app.include_router(tutor_router)
 app.include_router(flashcards_router)
 app.include_router(notes_router)
 app.include_router(games_router)
+app.include_router(achievements_router)
 
 
 @app.get("/health")

@@ -222,6 +222,18 @@ export interface LeaderboardEntry {
   best_score_percentage: number;
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  earned: boolean;
+}
+
+export interface CertificateEligibility {
+  eligible: boolean;
+  reason: string;
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -366,4 +378,34 @@ export const api = {
     ),
 
   getLeaderboard: (token: string) => request<LeaderboardEntry[]>("/games/leaderboard", {}, token),
+
+  getBadges: (token: string) => request<Badge[]>("/achievements/badges", {}, token),
+
+  getCertificateEligibility: (token: string) =>
+    request<CertificateEligibility>("/achievements/certificate/eligibility", {}, token),
+
+  downloadCertificate: async (token: string) => {
+    const response = await fetch(`${API_URL}/achievements/certificate/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        const body = await response.json();
+        detail = typeof body.detail === "string" ? body.detail : detail;
+      } catch {
+        // no JSON body
+      }
+      throw new ApiError(response.status, detail);
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nmcn-cbt-prep-certificate.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
