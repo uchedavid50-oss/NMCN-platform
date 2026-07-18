@@ -113,6 +113,12 @@ export default function DashboardPage() {
           🎓 CBT Center
         </Link>
         <Link
+          href="/clinical-cases"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          🩺 Clinical Cases
+        </Link>
+        <Link
           href="/analytics"
           className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
         >

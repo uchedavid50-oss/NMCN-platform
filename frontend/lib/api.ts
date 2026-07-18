@@ -274,6 +274,34 @@ export interface CBTExamSubmitResponse {
   breakdown: CBTExamBreakdownItem[];
 }
 
+export interface ClinicalCaseOption {
+  id: string;
+  text: string;
+  is_correct: boolean;
+  rationale: string;
+}
+
+export interface ClinicalCaseDecisionPoint {
+  id: string;
+  order_index: number;
+  question: string;
+  options: ClinicalCaseOption[];
+}
+
+export interface ClinicalCase {
+  id: string;
+  subject_context: string | null;
+  scenario: string;
+  created_at: string;
+  decision_points: ClinicalCaseDecisionPoint[];
+}
+
+export interface ClinicalCaseSummary {
+  id: string;
+  subject_context: string | null;
+  created_at: string;
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -471,4 +499,27 @@ export const api = {
 
   submitCBTExam: (sessionId: string, token: string) =>
     request<CBTExamSubmitResponse>(`/cbt-exam/${sessionId}/submit`, { method: "POST" }, token),
+
+  generateClinicalCase: (token: string, subjectId?: string) =>
+    request<ClinicalCase>(
+      "/clinical-cases/generate",
+      { method: "POST", body: JSON.stringify({ subject_id: subjectId ?? null }) },
+      token
+    ),
+
+  listClinicalCases: (token: string) =>
+    request<ClinicalCaseSummary[]>("/clinical-cases", {}, token),
+
+  getClinicalCase: (caseId: string, token: string) =>
+    request<ClinicalCase>(`/clinical-cases/${caseId}`, {}, token),
+
+  completeClinicalCase: (caseId: string, totalDecisions: number, correctDecisions: number, token: string) =>
+    request<{ score_percentage: number; current_streak: number }>(
+      `/clinical-cases/${caseId}/complete`,
+      {
+        method: "POST",
+        body: JSON.stringify({ total_decisions: totalDecisions, correct_decisions: correctDecisions }),
+      },
+      token
+    ),
 };
