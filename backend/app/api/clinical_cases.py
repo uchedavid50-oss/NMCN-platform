@@ -45,11 +45,12 @@ def _generate_case_json(subject_name: str | None) -> dict:
         '{"scenario": "...", "decision_points": [{"question": "...", "options": '
         '[{"text": "...", "is_correct": true|false, "rationale": "..."}]}]}\n\n'
         "The scenario should describe a patient presentation (age, chief complaint, relevant vitals "
-        "and history) in 3-5 sentences. Include 4-6 decision_points representing the sequence of "
+        "and history) in 3-5 sentences. Include 4-5 decision_points representing the sequence of "
         "clinical decisions a nurse would make (initial assessment, prioritization, intervention, "
-        "reassessment). Each decision point must have exactly 3-4 options with exactly ONE marked "
-        "is_correct: true, and EVERY option (correct and incorrect) must have its own rationale "
-        "explaining why it is or isn't the right clinical choice at that point in the case."
+        "reassessment). Each decision point must have exactly 3 options with exactly ONE marked "
+        "is_correct: true, and EVERY option (correct and incorrect) must have its own SHORT rationale "
+        "(one sentence) explaining why it is or isn't the right clinical choice at that point in the "
+        "case. Keep the whole response concise — short rationales, not paragraphs."
     )
 
     client = genai.Client(api_key=settings.google_api_key)
@@ -59,7 +60,7 @@ def _generate_case_json(subject_name: str | None) -> dict:
             contents="Generate a clinical case simulation.",
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
-                max_output_tokens=3000,
+                max_output_tokens=6000,
                 thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
                 response_mime_type="application/json",
             ),
