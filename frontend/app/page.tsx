@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { PulseTrace } from "@/components/PulseTrace";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
+    <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
+      <div className="absolute right-6 top-6">
+        <ThemeToggle />
+      </div>
+
       <p className="font-mono text-sm uppercase tracking-widest text-vital-teal">
         NMCN Professional Qualifying Examination
       </p>

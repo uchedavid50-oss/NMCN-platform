@@ -80,7 +80,7 @@ export default function FlashcardsPage() {
 
       <button
         onClick={() => setFlipped((f) => !f)}
-        className="mt-6 flex min-h-[280px] w-full flex-col items-center justify-center rounded-lg border border-mist bg-white px-8 py-10 text-center transition hover:border-vital-teal"
+        className="mt-6 flex min-h-[280px] w-full flex-col items-center justify-center rounded-lg border border-mist bg-card-bg px-8 py-10 text-center transition hover:border-vital-teal"
       >
         {!flipped ? (
           <p className="font-display text-2xl font-semibold text-ink-navy">{card.front}</p>

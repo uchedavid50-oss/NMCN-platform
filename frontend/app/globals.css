@@ -4,11 +4,35 @@
 
 :root {
   --chart-line: #0e7c7b;
+
+  --color-ink-navy: #0f2438;
+  --color-chart-cream: #f7f5f0;
+  --color-vital-teal: #0e7c7b;
+  --color-pulse-coral: #e85d4e;
+  --color-graphite: #3a4550;
+  --color-mist: #d8e2e0;
+  --color-card-bg: #ffffff;
+}
+
+.dark {
+  --chart-line: #2fd9c7;
+
+  /* Headings/body text and background swap roles in dark mode — same tokens,
+     inverted meaning, so every page using them re-themes automatically
+     without touching each page's markup. */
+  --color-ink-navy: #f2f5f7;
+  --color-chart-cream: #0b1622;
+  --color-vital-teal: #2fd9c7;
+  --color-pulse-coral: #ff8a75;
+  --color-graphite: #b7c2c7;
+  --color-mist: #26333f;
+  --color-card-bg: #16212c;
 }
 
 body {
-  background-color: #f7f5f0;
-  color: #3a4550;
+  background-color: var(--color-chart-cream);
+  color: var(--color-graphite);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Signature element: a pulse-line trace used on the auth pages and, later,

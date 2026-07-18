@@ -165,7 +165,7 @@ export default function PracticePage() {
           const isCorrectOption = feedback && option.id === feedback.correct_option_id;
           const isWrongSelected = feedback && isSelected && !feedback.is_correct;
 
-          let stateClasses = "border-mist hover:border-vital-teal hover:bg-white";
+          let stateClasses = "border-mist hover:border-vital-teal hover:bg-card-bg";
           if (feedback) {
             if (isCorrectOption) {
               stateClasses = "border-vital-teal bg-vital-teal/10";
@@ -190,7 +190,7 @@ export default function PracticePage() {
       </div>
 
       {feedback && (
-        <div className="mt-6 rounded-md border border-mist bg-white p-5">
+        <div className="mt-6 rounded-md border border-mist bg-card-bg p-5">
           <p
             className={`font-mono text-sm font-medium uppercase tracking-widest ${
               feedback.is_correct ? "text-vital-teal" : "text-pulse-coral"

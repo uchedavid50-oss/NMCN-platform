@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireAuth } from "@/lib/use-require-auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function DashboardPage() {
   const { logout } = useAuth();
@@ -25,12 +26,15 @@ export default function DashboardPage() {
             Welcome back, {user.email}
           </h1>
         </div>
-        <button
-          onClick={logout}
-          className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy hover:border-pulse-coral hover:text-pulse-coral"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={logout}
+            className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy hover:border-pulse-coral hover:text-pulse-coral"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="mt-10 grid grid-cols-2 gap-4 font-mono text-sm">

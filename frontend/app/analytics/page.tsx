@@ -104,7 +104,7 @@ export default function AnalyticsPage() {
         {studyPlanError && <p className="mt-3 text-sm text-pulse-coral">{studyPlanError}</p>}
 
         {studyPlan && (
-          <div className="mt-4 rounded-md border border-mist bg-white p-5">
+          <div className="mt-4 rounded-md border border-mist bg-card-bg p-5">
             {studyPlan.has_weak_topics && (
               <p className="mb-3 font-mono text-xs uppercase tracking-widest text-vital-teal">
                 Based on: {studyPlan.weak_topic_names.join(", ")}

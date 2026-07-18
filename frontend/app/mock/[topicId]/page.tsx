@@ -225,7 +225,7 @@ export default function MockExamPage() {
             className={`rounded-md border px-5 py-4 text-left font-body text-lg text-ink-navy transition ${
               option.id === selectedOptionId
                 ? "border-vital-teal bg-vital-teal/10"
-                : "border-mist hover:border-vital-teal hover:bg-white"
+                : "border-mist hover:border-vital-teal hover:bg-card-bg"
             }`}
           >
             {option.text}

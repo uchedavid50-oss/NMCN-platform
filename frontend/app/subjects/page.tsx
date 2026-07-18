@@ -46,7 +46,7 @@ export default function SubjectsPage() {
           <Link
             key={subject.id}
             href={`/subjects/${subject.id}`}
-            className="rounded-md border border-mist px-5 py-4 font-body text-lg text-ink-navy transition hover:border-vital-teal hover:bg-white"
+            className="rounded-md border border-mist px-5 py-4 font-body text-lg text-ink-navy transition hover:border-vital-teal hover:bg-card-bg"
           >
             {subject.name}
           </Link>
