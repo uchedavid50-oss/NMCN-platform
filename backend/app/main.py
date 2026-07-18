@@ -12,6 +12,7 @@ from app.api.payments import router as payments_router
 from app.api.analytics import router as analytics_router
 from app.api.tutor import router as tutor_router
 from app.api.flashcards import router as flashcards_router
+from app.api.notes import router as notes_router
 from app.core.config import settings
 
 DEV_DEFAULT_JWT_SECRET = "dev-only-change-this-before-any-real-deployment"
@@ -51,6 +52,7 @@ app.include_router(payments_router)
 app.include_router(analytics_router)
 app.include_router(tutor_router)
 app.include_router(flashcards_router)
+app.include_router(notes_router)
 
 
 @app.get("/health")

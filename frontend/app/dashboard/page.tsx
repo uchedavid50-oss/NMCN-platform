@@ -61,6 +61,12 @@ export default function DashboardPage() {
         >
           View my progress
         </Link>
+        <Link
+          href="/notes"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          My notes
+        </Link>
       </div>
     </main>
   );

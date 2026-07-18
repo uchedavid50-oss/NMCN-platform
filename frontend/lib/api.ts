@@ -13,8 +13,9 @@ async function request<T>(
   options: RequestInit = {},
   token?: string | null
 ): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(options.body && !isFormData ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> | undefined),
   };
@@ -176,6 +177,26 @@ export interface Flashcard {
   back: string;
 }
 
+export interface Note {
+  id: string;
+  filename: string;
+  created_at: string;
+}
+
+export interface GeneratedOption {
+  id: string;
+  text: string;
+  is_correct: boolean;
+}
+
+export interface GeneratedQuestion {
+  id: string;
+  stem: string;
+  difficulty: string;
+  explanation: string;
+  options: GeneratedOption[];
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -264,4 +285,22 @@ export const api = {
 
   getFlashcards: (topicId: string, token: string) =>
     request<Flashcard[]>(`/flashcards?topic_id=${topicId}`, {}, token),
+
+  uploadNote: (file: File, token: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<Note>("/notes/upload", { method: "POST", body: formData }, token);
+  },
+
+  listNotes: (token: string) => request<Note[]>("/notes", {}, token),
+
+  generateQuestionsFromNote: (noteId: string, count: number, token: string) =>
+    request<GeneratedQuestion[]>(
+      `/notes/${noteId}/generate-questions`,
+      { method: "POST", body: JSON.stringify({ count }) },
+      token
+    ),
+
+  getGeneratedQuestions: (noteId: string, token: string) =>
+    request<GeneratedQuestion[]>(`/notes/${noteId}/questions`, {}, token),
 };

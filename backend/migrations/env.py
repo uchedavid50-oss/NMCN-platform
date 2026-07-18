@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.db.session import Base
 
 # Import all models so their tables register on Base.metadata before autogenerate/migrations run.
-from app.models import user, subject, topic, question, option, attempt, attempt_answer, subscription, tutor_request  # noqa: F401
+from app.models import user, subject, topic, question, option, attempt, attempt_answer, subscription, tutor_request, note, generated_question, generated_option  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
