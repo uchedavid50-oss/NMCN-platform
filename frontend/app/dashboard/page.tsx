@@ -87,6 +87,12 @@ export default function DashboardPage() {
         >
           My notes
         </Link>
+        <Link
+          href="/leaderboard"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          🏆 Leaderboard
+        </Link>
       </div>
     </main>
   );

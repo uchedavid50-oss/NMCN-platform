@@ -143,3 +143,48 @@ def test_compute_streak_still_alive_if_played_yesterday_not_yet_today(db_session
     streak, played_today = compute_streak(db_session, user.id)
     assert streak == 1
     assert played_today is False
+
+
+def test_leaderboard_excludes_users_who_have_not_opted_in(client, auth_headers):
+    client.post(
+        "/games/speed-round/submit",
+        json={"total_questions": 10, "correct_answers": 8},
+        headers=auth_headers,
+    )
+    response = client.get("/games/leaderboard", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_leaderboard_shows_opted_in_users_with_display_name(client, auth_headers):
+    client.patch(
+        "/games/leaderboard/opt-in",
+        json={"opt_in": True, "display_name": "Ada N."},
+        headers=auth_headers,
+    )
+    client.post(
+        "/games/speed-round/submit",
+        json={"total_questions": 10, "correct_answers": 9},
+        headers=auth_headers,
+    )
+
+    response = client.get("/games/leaderboard", headers=auth_headers)
+    assert response.status_code == 200
+    entries = response.json()
+    assert len(entries) == 1
+    assert entries[0]["display_name"] == "Ada N."
+    assert entries[0]["current_streak"] == 1
+    assert entries[0]["best_score_percentage"] == 90.0
+
+
+def test_leaderboard_defaults_to_anonymous_without_display_name(client, auth_headers):
+    client.patch("/games/leaderboard/opt-in", json={"opt_in": True}, headers=auth_headers)
+    client.post(
+        "/games/speed-round/submit",
+        json={"total_questions": 10, "correct_answers": 5},
+        headers=auth_headers,
+    )
+
+    response = client.get("/games/leaderboard", headers=auth_headers)
+    entries = response.json()
+    assert entries[0]["display_name"] == "Anonymous student"

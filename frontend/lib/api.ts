@@ -44,6 +44,8 @@ export interface User {
   email: string;
   role: string;
   subscription_status: string;
+  leaderboard_opt_in: boolean;
+  display_name: string | null;
 }
 
 export interface Subject {
@@ -214,6 +216,12 @@ export interface StreakInfo {
   played_today: boolean;
 }
 
+export interface LeaderboardEntry {
+  display_name: string;
+  current_streak: number;
+  best_score_percentage: number;
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -349,4 +357,13 @@ export const api = {
     ),
 
   getStreak: (token: string) => request<StreakInfo>("/games/streak", {}, token),
+
+  setLeaderboardOptIn: (optIn: boolean, displayName: string | undefined, token: string) =>
+    request<StreakInfo>(
+      "/games/leaderboard/opt-in",
+      { method: "PATCH", body: JSON.stringify({ opt_in: optIn, display_name: displayName }) },
+      token
+    ),
+
+  getLeaderboard: (token: string) => request<LeaderboardEntry[]>("/games/leaderboard", {}, token),
 };

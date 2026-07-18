@@ -18,6 +18,8 @@ class UserOut(BaseModel):
     email: EmailStr
     role: str
     subscription_status: str
+    leaderboard_opt_in: bool
+    display_name: str | None
 
     class Config:
         from_attributes = True

@@ -37,3 +37,14 @@ class SpeedRoundSubmitResponse(BaseModel):
 class StreakResponse(BaseModel):
     current_streak: int
     played_today: bool
+
+
+class LeaderboardOptInRequest(BaseModel):
+    opt_in: bool
+    display_name: Optional[str] = Field(default=None, max_length=30)
+
+
+class LeaderboardEntry(BaseModel):
+    display_name: str
+    current_streak: int
+    best_score_percentage: float
