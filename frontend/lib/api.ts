@@ -302,6 +302,35 @@ export interface ClinicalCaseSummary {
   created_at: string;
 }
 
+export interface AdminDocument {
+  id: string;
+  filename: string;
+  document_type: string;
+  created_at: string;
+}
+
+export interface PendingOptionOut {
+  id: string;
+  text: string;
+  is_correct: boolean;
+}
+
+export interface PendingQuestionOut {
+  id: string;
+  topic_id: string;
+  stem: string;
+  difficulty: string;
+  explanation: string;
+  status: string;
+  created_at: string;
+  options: PendingOptionOut[];
+}
+
+export interface BulkImportResult {
+  created_count: number;
+  skipped_rows: string[];
+}
+
 export const api = {
   signup: (email: string, password: string) =>
     request<User>("/auth/signup", {
@@ -323,6 +352,8 @@ export const api = {
   listSubjects: () => request<Subject[]>("/subjects"),
 
   listTopics: (subjectId: string) => request<Topic[]>(`/topics?subject_id=${subjectId}`),
+
+  listAllTopics: () => request<Topic[]>("/topics"),
 
   startPractice: (topicId: string, token: string) =>
     request<PracticeStartResponse>(
@@ -522,4 +553,39 @@ export const api = {
       },
       token
     ),
+
+  bulkImportQuestions: (file: File, token: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<BulkImportResult>("/admin/content/bulk-import", { method: "POST", body: formData }, token);
+  },
+
+  uploadAdminDocument: (file: File, documentType: string, token: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("document_type", documentType);
+    return request<AdminDocument>(
+      "/admin/content/documents/upload",
+      { method: "POST", body: formData },
+      token
+    );
+  },
+
+  listAdminDocuments: (token: string) => request<AdminDocument[]>("/admin/content/documents", {}, token),
+
+  generatePendingQuestions: (documentId: string, topicId: string, count: number, token: string) =>
+    request<PendingQuestionOut[]>(
+      "/admin/content/generate",
+      { method: "POST", body: JSON.stringify({ document_id: documentId, topic_id: topicId, count }) },
+      token
+    ),
+
+  listPendingQuestions: (token: string) =>
+    request<PendingQuestionOut[]>("/admin/content/pending?status=pending", {}, token),
+
+  approvePendingQuestion: (pendingId: string, token: string) =>
+    request<PendingQuestionOut>(`/admin/content/pending/${pendingId}/approve`, { method: "POST" }, token),
+
+  rejectPendingQuestion: (pendingId: string, token: string) =>
+    request<PendingQuestionOut>(`/admin/content/pending/${pendingId}/reject`, { method: "POST" }, token),
 };

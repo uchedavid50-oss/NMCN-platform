@@ -17,6 +17,7 @@ from app.api.games import router as games_router
 from app.api.achievements import router as achievements_router
 from app.api.cbt_exam import router as cbt_exam_router
 from app.api.clinical_cases import router as clinical_cases_router
+from app.api.admin_content import router as admin_content_router
 from app.core.config import settings
 
 DEV_DEFAULT_JWT_SECRET = "dev-only-change-this-before-any-real-deployment"
@@ -61,6 +62,7 @@ app.include_router(games_router)
 app.include_router(achievements_router)
 app.include_router(cbt_exam_router)
 app.include_router(clinical_cases_router)
+app.include_router(admin_content_router)
 
 
 @app.get("/health")

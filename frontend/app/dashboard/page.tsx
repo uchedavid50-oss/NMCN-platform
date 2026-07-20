@@ -142,6 +142,14 @@ export default function DashboardPage() {
         >
           🏅 Achievements
         </Link>
+        {user.role === "admin" && (
+          <Link
+            href="/admin/content"
+            className="inline-block rounded-md border border-pulse-coral px-6 py-3 font-body font-medium text-pulse-coral transition hover:bg-pulse-coral/10"
+          >
+            ⚙️ Admin: Content
+          </Link>
+        )}
       </div>
     </main>
   );
