@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 
 from app.core.time import utcnow
@@ -77,28 +78,46 @@ def _check_tutor_available(db: Session, user_id) -> None:
 
 
 def _call_gemini(system_prompt: str, user_message: str) -> str:
+    """Gemini's servers periodically return 503 UNAVAILABLE ("high demand")
+    during load spikes — a well-documented, widely-reported issue affecting
+    many developers, not specific to our API key or code. These are almost
+    always transient (seconds to low minutes), so a short retry-with-backoff
+    resolves most of them automatically instead of surfacing an error to the
+    student for something that would have worked a few seconds later."""
     client = genai.Client(api_key=settings.google_api_key)
-    try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                max_output_tokens=settings.tutor_max_tokens,
-                # Gemini 3.x models "think" before answering by default, and that
-                # invisible reasoning is billed against the same max_output_tokens
-                # budget as the visible response — a real, widely-reported gotcha,
-                # not specific to us. Without this, we saw responses cut off
-                # mid-sentence because thinking silently ate almost the entire
-                # token budget before any visible text was written. "low" keeps
-                # answers fast and cheap for this use case (simple explanations,
-                # not multi-step reasoning problems).
-                thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
-            ),
-        )
-    except APIError as exc:
-        raise HTTPException(status_code=502, detail=f"Tutor request failed: {exc}")
-    return response.text or ""
+    config = types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        max_output_tokens=settings.tutor_max_tokens,
+        # Gemini 3.x models "think" before answering by default, and that
+        # invisible reasoning is billed against the same max_output_tokens
+        # budget as the visible response — a real, widely-reported gotcha,
+        # not specific to us. Without this, we saw responses cut off
+        # mid-sentence because thinking silently ate almost the entire
+        # token budget before any visible text was written. "low" keeps
+        # answers fast and cheap for this use case (simple explanations,
+        # not multi-step reasoning problems).
+        thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
+    )
+
+    max_attempts = 3
+    last_error = None
+    for attempt in range(max_attempts):
+        try:
+            response = client.models.generate_content(
+                model=settings.gemini_model,
+                contents=user_message,
+                config=config,
+            )
+            return response.text or ""
+        except APIError as exc:
+            last_error = exc
+            is_transient = getattr(exc, "code", None) == 503 or "UNAVAILABLE" in str(exc)
+            if is_transient and attempt < max_attempts - 1:
+                time.sleep(2 * (attempt + 1))  # 2s, then 4s
+                continue
+            break
+
+    raise HTTPException(status_code=502, detail=f"Tutor request failed: {last_error}")
 
 
 @router.post("/ask", response_model=TutorAskResponse)
