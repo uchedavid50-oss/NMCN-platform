@@ -4,6 +4,7 @@ import pytest
 
 from app.core.config import settings
 import app.api.clinical_cases as clinical_cases_module
+import app.api.tutor as tutor_module
 
 
 class _FakeResponse:
@@ -53,7 +54,7 @@ VALID_CASE_JSON = json.dumps(
 
 def test_generate_clinical_case_skips_malformed_decision_points(client, auth_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(clinical_cases_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
 
     response = client.post("/clinical-cases/generate", json={}, headers=auth_headers)
     assert response.status_code == 200
@@ -75,7 +76,7 @@ def test_clinical_case_requires_api_key(client, auth_headers, monkeypatch):
 
 def test_clinical_case_is_private_to_owner(client, auth_headers, make_user, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(clinical_cases_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
 
     case = client.post("/clinical-cases/generate", json={}, headers=auth_headers).json()
 
@@ -87,7 +88,7 @@ def test_clinical_case_is_private_to_owner(client, auth_headers, make_user, monk
 
 def test_complete_clinical_case_computes_score_and_streak(client, auth_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(clinical_cases_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
 
     case = client.post("/clinical-cases/generate", json={}, headers=auth_headers).json()
     response = client.post(
@@ -103,7 +104,7 @@ def test_complete_clinical_case_computes_score_and_streak(client, auth_headers, 
 
 def test_complete_clinical_case_rejects_impossible_score(client, auth_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(clinical_cases_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
 
     case = client.post("/clinical-cases/generate", json={}, headers=auth_headers).json()
     response = client.post(
@@ -116,7 +117,7 @@ def test_complete_clinical_case_rejects_impossible_score(client, auth_headers, m
 
 def test_list_clinical_cases_scoped_to_owner(client, auth_headers, make_user, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(clinical_cases_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_CASE_JSON))
 
     client.post("/clinical-cases/generate", json={}, headers=auth_headers)
 

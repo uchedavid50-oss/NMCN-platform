@@ -1031,3 +1031,180 @@ Pure code — `docker compose restart frontend` is enough.
 3. Complete a speed round, then refresh the dashboard — the banner should disappear once `played_today` is true.
 
 If the banner shows/hides correctly based on today's activity, Module 27 is done.
+
+## Module 28: CBT Center — Full Exam Simulation — Run It
+
+Adds a full, timed, mixed-subject exam of up to 250 (configurable 10-300) questions in one sitting — the closest thing on this platform to the real NMCN exam-day experience. New `CBTExamSession`/`CBTExamAnswer` tables, deliberately separate from the existing mock-exam `Attempt` model, since the scoring semantics differ (a fixed sample across every subject, not "however many questions exist for one topic").
+
+**Real NMCN format context** (confirmed via research, not assumed): the actual exam is split into separate subject-based papers (e.g. Anatomy/Physiology, Medical-Surgical Nursing & Pharmacology, Community Health/Paediatrics/Psychiatric Nursing), each running 2-3 hours. This module simulates the **combined experience** — one long mixed sitting — per your specific request, rather than the paper-by-paper structure. Worth knowing if you ever want to add true separate-paper mode later.
+
+**Design decisions, consistent with everything built so far:**
+- Same answer-hiding integrity as mock exams (Module 5) — no instant feedback, full breakdown only after submit.
+- Same lazy-cleanup pattern as Module 17 — an abandoned session gets auto-scored the next time it's touched, rather than sitting open forever.
+- **Free tier: 1 lifetime attempt**, then subscription-only — this is the flagship "real exam" feature, gated the same way regular mock exams are (Module 6).
+- Counts toward the daily streak (Module 24), same as every other practice activity.
+
+### Apply the new migration
+
+```
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Run the automated tests
+
+```
+docker compose exec backend pytest -v tests/test_cbt_exam.py
+```
+
+Should show 6 passing tests, including one confirming a request for 250 questions gracefully falls back to however many actually exist, one confirming the free-tier limit, and one confirming an active subscriber bypasses it.
+
+### Test it live
+
+1. From the dashboard, click **"🎓 CBT Center"**.
+2. Set your question count and time limit (defaults: 250 questions, 240 minutes), click **"Start full exam simulation"**.
+3. You should land on question 1 of however many questions actually exist in your bank (likely far fewer than 250 unless you've added a lot of content) — note the progress bar and "X answered" counter at the top.
+4. Answer a few, use "Previous"/"Next" and the "Go to #" jump box to navigate around.
+5. Click **"Submit exam"** — you should see a full score breakdown, grouped question-by-question with subject names shown.
+6. Try starting a **second** full exam on a free-tier account — should be blocked with a clear message about the free-tier limit, pointing to `/payments/initialize`.
+
+If the exam completes end to end and the free-tier gate blocks a second attempt correctly, Module 28 is done.
+
+### Known limitation, flagged on purpose
+
+The question set is stored in the browser's `sessionStorage`, not re-fetchable from the server after the initial load — a page refresh mid-exam will lose the in-progress question list (though answers already submitted to the server are safe). This mirrors how real exam software often behaves with interruptions, but a more robust version would re-fetch the stored `question_ids` from the backend on reload rather than relying on browser storage.
+
+## Module 29: Clinical Case Simulator — Run It
+
+Inspired by looking at how a competing nursing app (Abdella) structures its "Clinical Simulator" feature — this is an original build, not a copy, adapted specifically for NMCN prep. AI generates a realistic patient scenario with 4-6 sequential clinical decision points (assessment → prioritization → intervention → reassessment), each with 3-4 options and a rationale on **every** option, not just the correct one.
+
+**Design decision:** unlike practice/mock exams, this reveals correctness and rationale **immediately** after each decision — same reasoning as flashcards (Module 20). This is explicitly a teaching tool for building clinical judgment through real-time feedback, not a certification-relevant assessment, so instant feedback is the right mechanic here, not something to guard against.
+
+**Content stays private**, same as AI-generated questions from notes (Module 22) — no case goes into anything shared or "official."
+
+Shares the same daily Gemini budget as the tutor, study plans, and note-based question generation — one unified cost cap.
+
+### Apply the new migration
+
+```
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Run the automated tests
+
+```
+docker compose exec backend pytest -v tests/test_clinical_cases.py
+```
+
+Should show 6 passing, including one confirming malformed decision points (wrong option count, multiple/zero correct answers) get silently filtered out while well-formed ones survive — same pattern as Module 22's question generation.
+
+### Test it live
+
+1. From the dashboard, click **"🩺 Clinical Cases"**.
+2. Click **"Start a new case"** — after a few seconds, you should see a realistic patient scenario and your first clinical decision.
+3. Pick an option — it should immediately highlight correct (teal) / incorrect (coral), and show the rationale for both your choice and the correct one if you got it wrong.
+4. Click "Next decision" and work through the rest.
+5. After the last decision, you should land on a summary: overall score and (if you have one going) your updated streak.
+6. Go back to "Clinical Cases" — your completed case should now appear in "Past cases."
+
+If a full case generates, plays through with rationale at each step, and scores correctly at the end, Module 29 is done.
+
+## Module 30: Admin Content Import Pipeline — Run It
+
+Three ways to get real content into the question bank in bulk, each with a different trust level:
+
+1. **CSV bulk import** (`/admin/content`, "Bulk import" section) — for already-vetted content (e.g. your school's own questions, with their permission). Publishes **directly** into the official bank, no review step, since you're explicitly trusting the source.
+2. **Document upload → AI generation → review queue** — for textbooks or unstructured material. AI drafts questions grounded in the uploaded text, but they land in a **pending queue** — nothing reaches students until you explicitly approve it.
+3. **Past-questions mode** — same pipeline as #2, but with an explicit instruction to the AI: never copy a question verbatim, only generate **new, original** questions inspired by the same concepts and difficulty. This is the safer default for past exam papers even with permission, since it avoids republishing exact wording.
+
+**Admin-only, enforced server-side** — every endpoint requires the same `require_admin` check from Module 8, tested explicitly (a regular student gets a `403`, same pattern as the original question-bank lockdown).
+
+### CSV format for bulk import
+
+```
+subject,topic,stem,difficulty,explanation,option_a,option_b,option_c,option_d,correct_answer
+Anatomy,Cardiovascular,Which chamber pumps blood to the lungs?,easy,The right ventricle pumps deoxygenated blood to the lungs.,Right ventricle,Left ventricle,Right atrium,Left atrium,a
+```
+
+- `subject`/`topic` are created automatically if they don't already exist (matched by name).
+- `option_c`/`option_d` can be left blank for fewer than 4 options.
+- `correct_answer` is the letter (a/b/c/d) matching the correct option column.
+- Malformed rows are skipped individually with a reason — one bad row doesn't fail the whole file.
+
+### Apply the new migration
+
+```
+docker compose up --build
+docker compose exec backend alembic upgrade head
+```
+
+### Run the automated tests
+
+```
+docker compose exec backend pytest -v tests/test_admin_content.py
+```
+
+Should show 7 passing, including one confirming a regular student is blocked from bulk import, and two confirming the review queue actually works — approved questions reach the official bank, rejected ones never do.
+
+### Test it live
+
+1. From the dashboard (as your admin account), click **"⚙️ Admin: Content"**.
+2. Try the CSV import first — save the example CSV above to a file, upload it, confirm it reports "Created 1 questions" and that a new "Anatomy" subject appears if you didn't already have one.
+3. Upload a short `.txt` document (textbook or past-questions style), select it plus an existing topic, click "Generate questions" — after a few seconds, entries should appear in "Pending review" below.
+4. Click **"Approve"** on one — confirm it now shows up in the official question bank (check via `/subjects/{id}` → the topic → Practice, or Swagger's `GET /questions`).
+5. Click **"Reject"** on another — confirm it does *not* appear anywhere in the official bank.
+
+If both the CSV path and the generate-then-review path work, and a regular student account genuinely can't reach any of these endpoints, Module 30 is done.
+
+## Hotfix: Automatic Retry for Gemini 503 "High Demand" Errors
+
+**Real issue hit during live testing:** Gemini's servers periodically return `503 UNAVAILABLE` during load spikes — confirmed via research to be a widely-reported, well-documented issue affecting many developers using Gemini's newer models, not specific to our API key, code, or account. It's almost always transient (seconds to low minutes).
+
+**Fix:** every Gemini call now automatically retries up to 3 times with backoff (2s, then 4s) specifically for transient 503/UNAVAILABLE errors, before giving up and surfacing an error. This is shared by every AI feature (tutor, study plans, note-based question generation, clinical cases, admin content generation) since they all route through the same `_call_gemini` helper — one fix, applied everywhere at once.
+
+A new regression test (`test_gemini_call_retries_transient_503_and_succeeds`) simulates a client that fails twice then succeeds, confirming the retry logic actually recovers rather than just existing in the code unused.
+
+### Deploy this fix
+
+```
+git add .
+git commit -m "Add automatic retry for transient Gemini 503 errors"
+git push
+```
+
+### Run the tests
+
+```
+docker compose exec backend pytest -v tests/test_tutor.py
+```
+
+Should show 9 tests passing now (7 before + this new retry test + the earlier thinking-level test).
+
+Once deployed, a single 503 blip should now resolve itself automatically most of the time — you'll only see an error surface if Gemini stays down for the full retry window (roughly 6+ seconds of continuous failure), which is a good sign of a genuinely longer outage rather than a normal blip.
+
+## Hotfix: Switched to gemini-2.5-flash (confirmed active 3.5 outage) + Code Consolidation
+
+**Real issue confirmed via research:** a corroborated report of a 14+ hour sustained outage specifically on `gemini-3.5-flash`, plus general status-tracker data showing real instability over the preceding 24 hours. Not a one-off blip, and not something our retry logic alone could paper over.
+
+**Fix:** switched the default model to `gemini-2.5-flash` — more mature, more stable. This came with a real compatibility trap worth understanding: **Gemini 2.5 and 3.x models use two different, incompatible "thinking" parameters** — `thinking_budget` (a number) for 2.5, `thinking_level` (a word like `"low"`) for 3.x. Using the wrong one is a hard error, not a silent fallback. There's also a documented bug where `thinking_budget=0` doesn't reliably behave on 2.5 Flash, so the code deliberately uses `thinking_budget=1` instead.
+
+**While fixing this, a real duplication problem got cleaned up too:** `notes.py` and `clinical_cases.py` had each built their own separate Gemini client call, copy-pasting the same config logic as `tutor.py`. That meant the thinking-config fix would have needed to be applied and re-verified in three separate places — exactly the kind of drift that causes one spot to get fixed while the others quietly stay broken. All three now route through one shared `_call_gemini` function, so this class of fix (and any future one) only needs to happen once.
+
+### Deploy this fix
+
+```
+git add .
+git commit -m "Switch to gemini-2.5-flash, consolidate Gemini calls into one shared function"
+git push
+```
+
+### Run the tests
+
+```
+docker compose exec backend pytest -v
+```
+
+Should show the full suite passing — this touched `tutor.py`, `notes.py`, and `clinical_cases.py` together, so worth running everything, not just one test file, to confirm nothing else broke in the consolidation.
+
+Once deployed, retry generating questions/cases — should work reliably now, assuming `gemini-2.5-flash` isn't experiencing its own issues (check status trackers if it still fails repeatedly).

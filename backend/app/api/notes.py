@@ -3,14 +3,10 @@ import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
 from app.api.tutor import _call_gemini, _check_tutor_available
-from app.core.config import settings
 from app.db.session import get_db
 from app.models.generated_option import GeneratedOption
 from app.models.generated_question import GeneratedQuestion
@@ -80,23 +76,15 @@ def _generate_questions_json(note_text: str, count: int) -> list:
         f"Generate up to {count} questions."
     )
 
-    client = genai.Client(api_key=settings.google_api_key)
-    try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=f"Student's notes:\n\n{note_text}",
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                max_output_tokens=3000,
-                thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
-                response_mime_type="application/json",
-            ),
-        )
-    except APIError as exc:
-        raise HTTPException(status_code=502, detail=f"Question generation failed: {exc}")
+    reply_text = _call_gemini(
+        system_prompt,
+        f"Student's notes:\n\n{note_text}",
+        response_mime_type="application/json",
+        max_output_tokens=3000,
+    )
 
     try:
-        parsed = json.loads(response.text or "{}")
+        parsed = json.loads(reply_text or "{}")
         questions = parsed["questions"]
         if not isinstance(questions, list) or len(questions) == 0:
             raise ValueError("empty questions list")

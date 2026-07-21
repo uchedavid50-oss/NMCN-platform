@@ -77,27 +77,48 @@ def _check_tutor_available(db: Session, user_id) -> None:
         )
 
 
-def _call_gemini(system_prompt: str, user_message: str) -> str:
-    """Gemini's servers periodically return 503 UNAVAILABLE ("high demand")
+def _build_thinking_config():
+    """Gemini 2.5 and 3.x models use two DIFFERENT, incompatible thinking
+    parameters — thinking_budget (an integer) for 2.5, thinking_level (a
+    word like "low") for 3.x. Passing the wrong one is a hard error, not a
+    silent fallback. This is the one place that decision is made, so every
+    caller (tutor, notes, clinical cases, admin content) stays correct
+    automatically if the model is ever changed again.
+
+    Also deliberately avoids thinking_budget=0 — a documented bug where
+    Gemini 2.5 Flash doesn't reliably honor a zero budget."""
+    if settings.gemini_model.startswith("gemini-3"):
+        return types.ThinkingConfig(thinking_level="low")
+    return types.ThinkingConfig(thinking_budget=1)
+
+
+def _call_gemini(
+    system_prompt: str,
+    user_message: str,
+    response_mime_type: str | None = None,
+    max_output_tokens: int | None = None,
+) -> str:
+    """Shared by every AI feature (tutor, study plans, note-based question
+    generation, clinical cases, admin content generation) — one place to fix
+    reliability issues like the 503 retry logic below and the thinking-config
+    handling above, instead of each feature reimplementing its own Gemini
+    call and drifting out of sync.
+
+    Gemini's servers periodically return 503 UNAVAILABLE ("high demand")
     during load spikes — a well-documented, widely-reported issue affecting
-    many developers, not specific to our API key or code. These are almost
-    always transient (seconds to low minutes), so a short retry-with-backoff
+    many developers, not specific to our API key or code. These are usually
+    transient (seconds to low minutes), so a short retry-with-backoff
     resolves most of them automatically instead of surfacing an error to the
     student for something that would have worked a few seconds later."""
     client = genai.Client(api_key=settings.google_api_key)
-    config = types.GenerateContentConfig(
-        system_instruction=system_prompt,
-        max_output_tokens=settings.tutor_max_tokens,
-        # Gemini 3.x models "think" before answering by default, and that
-        # invisible reasoning is billed against the same max_output_tokens
-        # budget as the visible response — a real, widely-reported gotcha,
-        # not specific to us. Without this, we saw responses cut off
-        # mid-sentence because thinking silently ate almost the entire
-        # token budget before any visible text was written. "low" keeps
-        # answers fast and cheap for this use case (simple explanations,
-        # not multi-step reasoning problems).
-        thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
-    )
+    config_kwargs = {
+        "system_instruction": system_prompt,
+        "max_output_tokens": max_output_tokens or settings.tutor_max_tokens,
+        "thinking_config": _build_thinking_config(),
+    }
+    if response_mime_type:
+        config_kwargs["response_mime_type"] = response_mime_type
+    config = types.GenerateContentConfig(**config_kwargs)
 
     max_attempts = 3
     last_error = None

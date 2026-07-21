@@ -23,6 +23,27 @@ class _FakeGenaiClient:
         self.models = _FakeModels()
 
 
+class _FlakyModels:
+    """Fails with a transient 503 twice, then succeeds — simulates Gemini's
+    real 'high demand' overload behavior to test our retry logic."""
+
+    call_count = 0
+
+    @staticmethod
+    def generate_content(**kwargs):
+        _FlakyModels.call_count += 1
+        if _FlakyModels.call_count < 3:
+            from google.genai.errors import APIError
+
+            raise APIError(503, {"error": {"message": "high demand", "status": "UNAVAILABLE"}})
+        return _FakeResponse("Recovered after retrying.")
+
+
+class _FlakyGenaiClient:
+    def __init__(self, api_key=None):
+        self.models = _FlakyModels()
+
+
 @pytest.fixture()
 def topic_with_question(client, admin_headers):
     subject = client.post("/subjects", json={"name": "Anatomy"}, headers=admin_headers).json()
@@ -159,15 +180,16 @@ def test_study_plan_identifies_weak_topic_and_generates_plan(
     assert body["plan"] == "This is a mocked tutor explanation."
 
 
-def test_gemini_call_sets_thinking_level_to_avoid_truncation(
+def test_gemini_call_sets_thinking_config_to_avoid_truncation(
     client, auth_headers, monkeypatch, topic_with_question
 ):
-    """Regression test for a real production bug: Gemini 3.x models 'think'
+    """Regression test for a real production bug: Gemini models 'think'
     before answering by default, and that invisible reasoning is billed
     against the same max_output_tokens budget as the visible response —
-    without capping thinking_level, real responses came back truncated
-    mid-sentence. This confirms every call explicitly sets thinking_level,
-    so this can't silently regress."""
+    without capping this, real responses came back truncated mid-sentence.
+    This confirms every call explicitly sets a thinking config (using
+    whichever parameter matches the current model — thinking_budget for
+    2.5 series, thinking_level for 3.x), so this can't silently regress."""
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
     monkeypatch.setattr(tutor_module.genai, "Client", _FakeGenaiClient)
     topic, question = topic_with_question
@@ -187,4 +209,43 @@ def test_gemini_call_sets_thinking_level_to_avoid_truncation(
 
     config = _FakeModels.last_call_kwargs["config"]
     assert config.thinking_config is not None
-    assert config.thinking_config.thinking_level == settings.gemini_thinking_level
+    # The SDK stores this as an enum (e.g. ThinkingLevel.LOW) rather than the
+    # raw string we passed in — compare by value, not identity, to avoid a
+    # brittle test tied to the SDK's internal representation.
+    # Since settings.gemini_model defaults to gemini-2.5-flash, this should use
+    # thinking_budget (not thinking_level, which is 3.x-only and would error
+    # on 2.5 models).
+    assert config.thinking_config is not None
+    assert config.thinking_config.thinking_budget == 1
+
+
+def test_gemini_call_retries_transient_503_and_succeeds(
+    client, auth_headers, monkeypatch, topic_with_question
+):
+    """Regression test for a real production issue: Gemini periodically
+    returns 503 UNAVAILABLE ('high demand') during load spikes — a
+    well-documented, widely-reported behavior, not specific to our API key.
+    Confirms our retry-with-backoff actually recovers instead of failing
+    the student's request on the first transient blip."""
+    monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
+    monkeypatch.setattr(tutor_module.genai, "Client", _FlakyGenaiClient)
+    monkeypatch.setattr(tutor_module.time, "sleep", lambda seconds: None)  # skip real waiting in tests
+    _FlakyModels.call_count = 0
+    topic, question = topic_with_question
+
+    start = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=auth_headers).json()
+    option_id = question["options"][0]["id"]
+    client.post(
+        f"/practice/{start['attempt_id']}/answer",
+        json={"question_id": question["id"], "selected_option_id": option_id},
+        headers=auth_headers,
+    )
+
+    response = client.post(
+        "/tutor/ask",
+        json={"question_id": question["id"], "message": "Explain again"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["reply"] == "Recovered after retrying."
+    assert _FlakyModels.call_count == 3  # failed twice, succeeded on the third try

@@ -2,14 +2,10 @@ import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
-from app.api.tutor import _check_tutor_available
-from app.core.config import settings
+from app.api.tutor import _call_gemini, _check_tutor_available
 from app.db.session import get_db
 from app.models.clinical_case import ClinicalCase
 from app.models.clinical_case_decision_point import ClinicalCaseDecisionPoint
@@ -53,23 +49,15 @@ def _generate_case_json(subject_name: str | None) -> dict:
         "case. Keep the whole response concise — short rationales, not paragraphs."
     )
 
-    client = genai.Client(api_key=settings.google_api_key)
-    try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents="Generate a clinical case simulation.",
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                max_output_tokens=6000,
-                thinking_config=types.ThinkingConfig(thinking_level=settings.gemini_thinking_level),
-                response_mime_type="application/json",
-            ),
-        )
-    except APIError as exc:
-        raise HTTPException(status_code=502, detail=f"Case generation failed: {exc}")
+    reply_text = _call_gemini(
+        system_prompt,
+        "Generate a clinical case simulation.",
+        response_mime_type="application/json",
+        max_output_tokens=6000,
+    )
 
     try:
-        parsed = json.loads(response.text or "{}")
+        parsed = json.loads(reply_text or "{}")
         if not parsed.get("scenario") or not parsed.get("decision_points"):
             raise ValueError("missing scenario or decision_points")
     except (json.JSONDecodeError, ValueError) as exc:

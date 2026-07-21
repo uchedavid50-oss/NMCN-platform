@@ -17,8 +17,7 @@ class Settings(BaseSettings):
     frontend_callback_url: str = "http://localhost:3000/payment/callback"
 
     google_api_key: str = ""
-    gemini_model: str = "gemini-3.5-flash"
-    gemini_thinking_level: str = "low"
+    gemini_model: str = "gemini-2.5-flash"
     tutor_max_tokens: int = 1024
 
     class Config:

@@ -5,6 +5,7 @@ import pytest
 
 from app.core.config import settings
 import app.api.notes as notes_module
+import app.api.tutor as tutor_module
 
 
 class _FakeResponse:
@@ -87,7 +88,7 @@ def test_upload_rejects_empty_file(client, auth_headers):
 
 def test_generate_questions_skips_malformed_and_keeps_valid(client, auth_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(notes_module.genai, "Client", _make_fake_client(VALID_GEMINI_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_GEMINI_JSON))
 
     upload = client.post(
         "/notes/upload",
@@ -111,7 +112,7 @@ def test_generate_questions_skips_malformed_and_keeps_valid(client, auth_headers
 
 def test_generated_questions_are_private_to_owner(client, auth_headers, make_user, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(notes_module.genai, "Client", _make_fake_client(VALID_GEMINI_JSON))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client(VALID_GEMINI_JSON))
 
     upload = client.post(
         "/notes/upload",
@@ -156,7 +157,7 @@ def test_ask_about_note_grounded_response(client, auth_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
     # _call_gemini (shared with /tutor/ask) uses response.text directly here —
     # only /generate-questions requests structured JSON output.
-    monkeypatch.setattr(notes_module.genai, "Client", _make_fake_client("The SA node paces the heart."))
+    monkeypatch.setattr(tutor_module.genai, "Client", _make_fake_client("The SA node paces the heart."))
 
     upload = client.post(
         "/notes/upload",
