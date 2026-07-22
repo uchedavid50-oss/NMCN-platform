@@ -39,7 +39,7 @@ async def upload_admin_document(
 ):
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=400, detail="File too large — please keep uploads under 5MB.")
+        raise HTTPException(status_code=400, detail="File too large - please keep uploads under 5MB.")
 
     extracted_text = extract_text_from_upload(file.filename, content)
 
@@ -90,7 +90,8 @@ def generate_pending_questions(
     system_prompt = (
         "You write NMCN (Nursing and Midwifery Council of Nigeria) exam-style practice questions "
         f"for the topic '{topic.name}'.\n\n{instruction}\n\n"
-        "Respond with ONLY valid JSON, nothing else:\n"
+        "Respond with ONLY valid JSON, nothing else, using EXACTLY this structure "
+        "(a single object with a questions key, not a bare array):\n"
         '{"questions": [{"stem": "...", "difficulty": "easy|medium|hard", "explanation": "...", '
         '"options": [{"text": "...", "is_correct": true|false}, ...]}]}\n\n'
         "Each question must have exactly 4 options with exactly ONE marked is_correct: true. "
@@ -106,9 +107,9 @@ def generate_pending_questions(
 
     try:
         parsed = json.loads(reply_text or "{}")
-        raw_questions = parsed["questions"]
+        raw_questions = parsed if isinstance(parsed, list) else parsed["questions"]
     except (json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise HTTPException(status_code=502, detail=f"The AI didn't return usable questions — try again. ({exc})")
+        raise HTTPException(status_code=502, detail=f"The AI didn't return usable questions - try again. ({exc})")
 
     created = []
     for raw_q in raw_questions:
@@ -133,7 +134,7 @@ def generate_pending_questions(
             continue
 
     if not created:
-        raise HTTPException(status_code=502, detail="No well-formed questions were generated — try again.")
+        raise HTTPException(status_code=502, detail="No well-formed questions were generated - try again.")
 
     db.commit()
     for q in created:
@@ -217,11 +218,6 @@ async def bulk_import_questions(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    """Direct import, no review queue — intended for already-vetted content
-    (e.g. a school's own question set, imported with permission), not
-    AI-generated drafts. CSV columns: subject, topic, stem, difficulty,
-    explanation, option_a, option_b, option_c, option_d, correct_answer
-    (a/b/c/d). option_c/option_d may be left blank for fewer than 4 options."""
     content = await file.read()
     text = content.decode("utf-8-sig", errors="ignore")
     reader = csv.DictReader(io.StringIO(text))
@@ -229,7 +225,7 @@ async def bulk_import_questions(
     created_count = 0
     skipped_rows = []
 
-    for i, row in enumerate(reader, start=2):  # row 1 is the header
+    for i, row in enumerate(reader, start=2):
         try:
             subject_name = row["subject"].strip()
             topic_name = row["topic"].strip()
@@ -277,7 +273,7 @@ async def bulk_import_questions(
             created_count += 1
         except KeyError as exc:
             skipped_rows.append(f"Row {i}: missing required column {exc}")
-        except Exception as exc:  # noqa: BLE001 - keep import going for the rest of the file
+        except Exception as exc:
             skipped_rows.append(f"Row {i}: {exc}")
 
     db.commit()
