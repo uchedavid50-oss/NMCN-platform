@@ -97,7 +97,12 @@ def generate_pending_questions(
         f"Generate up to {payload.count} questions."
     )
 
-    reply_text = _call_gemini(system_prompt, f"Source material:\n\n{document.extracted_text}")
+    reply_text = _call_gemini(
+        system_prompt,
+        f"Source material:\n\n{document.extracted_text}",
+        response_mime_type="application/json",
+        max_output_tokens=8000,
+    )
 
     try:
         parsed = json.loads(reply_text or "{}")
