@@ -29,6 +29,28 @@ from app.services.note_extraction import MAX_UPLOAD_BYTES, extract_text_from_upl
 
 router = APIRouter(prefix="/admin/content", tags=["admin-content"])
 
+EXAM_FRAMING = {
+    "NMCN": "the NMCN (Nursing and Midwifery Council of Nigeria) Professional Qualifying Examination",
+    "NCLEX": "the NCLEX (National Council Licensure Examination) for nursing licensure",
+}
+
+
+@router.patch("/subjects/{subject_id}/exam-type")
+def set_subject_exam_type(
+    subject_id: uuid.UUID,
+    exam_type: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if exam_type not in EXAM_FRAMING:
+        raise HTTPException(status_code=400, detail=f"exam_type must be one of {list(EXAM_FRAMING)}")
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    subject.exam_type = exam_type
+    db.commit()
+    return {"id": str(subject.id), "name": subject.name, "exam_type": subject.exam_type}
+
 
 @router.post("/documents/upload", response_model=AdminDocumentOut)
 async def upload_admin_document(
@@ -71,9 +93,17 @@ def generate_pending_questions(
     document = db.query(AdminDocument).filter(AdminDocument.id == payload.document_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    topic = db.query(Topic).filter(Topic.id == payload.topic_id).first()
+    topic = (
+        db.query(Topic)
+        .options(joinedload(Topic.subject))
+        .filter(Topic.id == payload.topic_id)
+        .first()
+    )
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+
+    exam_type = topic.subject.exam_type if topic.subject else "NMCN"
+    exam_framing = EXAM_FRAMING.get(exam_type, EXAM_FRAMING["NMCN"])
 
     if document.document_type == "past_questions":
         instruction = (
@@ -88,8 +118,8 @@ def generate_pending_questions(
         )
 
     system_prompt = (
-        "You write NMCN (Nursing and Midwifery Council of Nigeria) exam-style practice questions "
-        f"for the topic '{topic.name}'.\n\n{instruction}\n\n"
+        f"You write exam-style practice questions for a nursing student preparing for "
+        f"{exam_framing}, on the topic '{topic.name}'.\n\n{instruction}\n\n"
         "Respond with ONLY valid JSON, nothing else, using EXACTLY this structure "
         "(a single object with a questions key, not a bare array):\n"
         '{"questions": [{"stem": "...", "difficulty": "easy|medium|hard", "explanation": "...", '

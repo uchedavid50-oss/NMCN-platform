@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.db.session import Base
 
 # Import all models so their tables register on Base.metadata before autogenerate/migrations run.
-from app.models import user, subject, topic, question, option, attempt, attempt_answer, subscription, tutor_request, note, generated_question, generated_option, speed_round, cbt_exam, cbt_exam_answer, clinical_case, clinical_case_decision_point, clinical_case_option, clinical_case_result, admin_document, pending_question, pending_option, course, mnemonic, focus_session  # noqa: F401
+from app.models import user, subject, topic, question, option, attempt, attempt_answer, subscription, tutor_request, note, generated_question, generated_option, speed_round, cbt_exam, cbt_exam_answer, clinical_case, clinical_case_decision_point, clinical_case_option, clinical_case_result, admin_document, pending_question, pending_option, course, mnemonic, focus_session, dictionary_entry, textbook_folder, textbook  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
