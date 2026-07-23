@@ -46,138 +46,69 @@ def _generate_case_json(subject_name: str | None) -> dict:
         "reassessment). Each decision point must have exactly 3 options with exactly ONE marked "
         "is_correct: true, and EVERY option (correct and incorrect) must have its own SHORT rationale "
         "(one sentence) explaining why it is or isn't the right clinical choice at that point in the "
-        "case. Keep the whole response concise — short rationales, not paragraphs."
+        "case. Keep the whole response concise - short rationales, not paragraphs."
     )
-
-    reply_text = _call_gemini(
-        system_prompt,
-        "Generate a clinical case simulation.",
-        response_mime_type="application/json",
-        max_output_tokens=6000,
-    )
-
+    reply_text = _call_gemini(system_prompt, "Generate a clinical case simulation.", response_mime_type="application/json", max_output_tokens=6000)
     try:
-        parsed = json.loads(reply_text or "{}")
+        parsed, _ = json.JSONDecoder().raw_decode((reply_text or "{}").strip())
         if not parsed.get("scenario") or not parsed.get("decision_points"):
             raise ValueError("missing scenario or decision_points")
     except (json.JSONDecodeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=502, detail=f"The AI didn't return a usable case — try again. ({exc})"
-        )
-
+        raise HTTPException(status_code=502, detail=f"The AI didn't return a usable case - try again. ({exc})")
     return parsed
 
 
 @router.post("/generate", response_model=ClinicalCaseOut)
-def generate_clinical_case(
-    payload: ClinicalCaseGenerateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
+def generate_clinical_case(payload: ClinicalCaseGenerateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _check_tutor_available(db, current_user.id)
-
     subject_name = None
     if payload.subject_id:
         subject = db.query(Subject).filter(Subject.id == payload.subject_id).first()
         if not subject:
             raise HTTPException(status_code=404, detail="Subject not found")
         subject_name = subject.name
-
     raw_case = _generate_case_json(subject_name)
-
-    case = ClinicalCase(
-        user_id=current_user.id,
-        subject_context=subject_name,
-        scenario=raw_case["scenario"],
-    )
+    case = ClinicalCase(user_id=current_user.id, subject_context=subject_name, scenario=raw_case["scenario"])
     db.add(case)
     db.flush()
-
     for i, dp in enumerate(raw_case["decision_points"]):
         options = dp.get("options", [])
         correct_count = sum(1 for o in options if o.get("is_correct"))
         if len(options) < 2 or correct_count != 1:
-            continue  # skip malformed decision points rather than failing the whole case
-
+            continue
         decision_point = ClinicalCaseDecisionPoint(case_id=case.id, order_index=i, question=dp["question"])
-        decision_point.options = [
-            ClinicalCaseOption(
-                text=o["text"], is_correct=bool(o.get("is_correct")), rationale=o.get("rationale", "")
-            )
-            for o in options
-        ]
+        decision_point.options = [ClinicalCaseOption(text=o["text"], is_correct=bool(o.get("is_correct")), rationale=o.get("rationale", "")) for o in options]
         db.add(decision_point)
-
     db.add(TutorRequest(user_id=current_user.id))
     db.commit()
     db.refresh(case)
-
     if not case.decision_points:
-        raise HTTPException(
-            status_code=502, detail="The AI's response didn't contain any usable decision points — try again."
-        )
-
+        raise HTTPException(status_code=502, detail="The AI's response didn't contain any usable decision points - try again.")
     return case
 
 
 @router.get("", response_model=list[ClinicalCaseSummary])
-def list_clinical_cases(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return (
-        db.query(ClinicalCase)
-        .filter(ClinicalCase.user_id == current_user.id)
-        .order_by(ClinicalCase.created_at.desc())
-        .all()
-    )
+def list_clinical_cases(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return db.query(ClinicalCase).filter(ClinicalCase.user_id == current_user.id).order_by(ClinicalCase.created_at.desc()).all()
 
 
 @router.get("/{case_id}", response_model=ClinicalCaseOut)
-def get_clinical_case(
-    case_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    case = (
-        db.query(ClinicalCase)
-        .options(joinedload(ClinicalCase.decision_points).joinedload(ClinicalCaseDecisionPoint.options))
-        .filter(ClinicalCase.id == case_id, ClinicalCase.user_id == current_user.id)
-        .first()
-    )
+def get_clinical_case(case_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    case = db.query(ClinicalCase).options(joinedload(ClinicalCase.decision_points).joinedload(ClinicalCaseDecisionPoint.options)).filter(ClinicalCase.id == case_id, ClinicalCase.user_id == current_user.id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Clinical case not found")
     return case
 
 
 @router.post("/{case_id}/complete", response_model=ClinicalCaseCompleteResponse)
-def complete_clinical_case(
-    case_id: uuid.UUID,
-    payload: ClinicalCaseCompleteRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    case = (
-        db.query(ClinicalCase)
-        .filter(ClinicalCase.id == case_id, ClinicalCase.user_id == current_user.id)
-        .first()
-    )
+def complete_clinical_case(case_id: uuid.UUID, payload: ClinicalCaseCompleteRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    case = db.query(ClinicalCase).filter(ClinicalCase.id == case_id, ClinicalCase.user_id == current_user.id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Clinical case not found")
     if payload.correct_decisions > payload.total_decisions:
         raise HTTPException(status_code=400, detail="correct_decisions can't exceed total_decisions")
-
     score_percentage = round((payload.correct_decisions / payload.total_decisions) * 100, 2)
-    db.add(
-        ClinicalCaseResult(
-            case_id=case_id,
-            user_id=current_user.id,
-            total_decisions=payload.total_decisions,
-            correct_decisions=payload.correct_decisions,
-            score_percentage=score_percentage,
-        )
-    )
+    db.add(ClinicalCaseResult(case_id=case_id, user_id=current_user.id, total_decisions=payload.total_decisions, correct_decisions=payload.correct_decisions, score_percentage=score_percentage))
     db.commit()
-
     streak, _ = compute_streak(db, current_user.id)
     return ClinicalCaseCompleteResponse(score_percentage=score_percentage, current_streak=streak)

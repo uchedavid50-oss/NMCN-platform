@@ -106,9 +106,9 @@ def generate_pending_questions(
     )
 
     try:
-        parsed = json.loads(reply_text or "{}")
+        parsed, _ = json.JSONDecoder().raw_decode((reply_text or "{}").strip())
         raw_questions = parsed if isinstance(parsed, list) else parsed["questions"]
-    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=502, detail=f"The AI didn't return usable questions - try again. ({exc})")
 
     created = []

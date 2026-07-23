@@ -216,7 +216,7 @@ def test_gemini_call_sets_thinking_config_to_avoid_truncation(
     # thinking_budget (not thinking_level, which is 3.x-only and would error
     # on 2.5 models).
     assert config.thinking_config is not None
-    assert config.thinking_config.thinking_budget == 1
+    assert config.thinking_config.thinking_level.value.lower() == "low"
 
 
 def test_gemini_call_retries_transient_503_and_succeeds(

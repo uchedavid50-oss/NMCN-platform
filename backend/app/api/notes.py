@@ -1,4 +1,3 @@
-import json
 import uuid
 from typing import List
 
@@ -33,7 +32,7 @@ async def upload_note(
 ):
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=400, detail="File too large — please keep uploads under 5MB.")
+        raise HTTPException(status_code=400, detail="File too large - please keep uploads under 5MB.")
 
     extracted_text = extract_text_from_upload(file.filename, content)
 
@@ -62,13 +61,15 @@ def list_notes(
 
 
 def _generate_questions_json(note_text: str, count: int) -> list:
+    import json
+
     system_prompt = (
         "You write NMCN (Nursing and Midwifery Council of Nigeria) exam-style practice questions "
         "based on a student's own study notes. Generate multiple-choice questions grounded ONLY in "
-        "the material provided — do not introduce facts that aren't supported by the text. If the "
+        "the material provided - do not introduce facts that aren't supported by the text. If the "
         "notes are too thin or unclear to generate a good question, generate fewer questions rather "
         "than inventing content.\n\n"
-        "Respond with ONLY valid JSON in this exact structure, nothing else — no markdown, no "
+        "Respond with ONLY valid JSON in this exact structure, nothing else - no markdown, no "
         "commentary:\n"
         '{"questions": [{"stem": "...", "difficulty": "easy|medium|hard", "explanation": "...", '
         '"options": [{"text": "...", "is_correct": true|false}, ...]}]}\n\n'
@@ -84,14 +85,14 @@ def _generate_questions_json(note_text: str, count: int) -> list:
     )
 
     try:
-        parsed = json.loads(reply_text or "{}")
+        parsed, _ = json.JSONDecoder().raw_decode((reply_text or "{}").strip())
         questions = parsed["questions"]
         if not isinstance(questions, list) or len(questions) == 0:
             raise ValueError("empty questions list")
     except (json.JSONDecodeError, KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"The AI didn't return usable questions from this text — try again. ({exc})",
+            detail=f"The AI didn't return usable questions from this text - try again. ({exc})",
         )
 
     return questions
@@ -127,7 +128,7 @@ def generate_questions_from_note(
             raw_options = raw_q["options"]
             correct_count = sum(1 for o in raw_options if o.get("is_correct"))
             if len(raw_options) < 2 or correct_count != 1:
-                continue  # skip malformed questions rather than failing the whole batch
+                continue
         except (KeyError, TypeError):
             continue
 
@@ -147,12 +148,9 @@ def generate_questions_from_note(
     if not created:
         raise HTTPException(
             status_code=502,
-            detail="The AI's response didn't contain any well-formed questions — try again.",
+            detail="The AI's response didn't contain any well-formed questions - try again.",
         )
 
-    # Count this as one request against the shared daily Gemini budget, same
-    # as /tutor/ask and /tutor/study-plan — one cost cap across every AI
-    # feature, not a separate unprotected quota per feature.
     db.add(TutorRequest(user_id=current_user.id))
     db.commit()
     for q in created:
@@ -190,10 +188,6 @@ def ask_about_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Teaching mode grounded in a student's own uploaded notes — distinct
-    from /tutor/ask (Module 14), which is grounded in the official question
-    bank and requires having attempted a specific question first. This one
-    is free-form, but strictly scoped to the content of one uploaded note."""
     _check_tutor_available(db, current_user.id)
 
     note = (
@@ -211,7 +205,7 @@ def ask_about_note(
         f"Student's notes:\n\n{note.extracted_text}\n\n"
         "Answer based on these notes wherever they cover the topic. If the student's question goes "
         "beyond what's in their notes, say so honestly rather than pretending the answer came from "
-        "their material — you may still add general nursing knowledge to help, but clearly mark it "
+        "their material - you may still add general nursing knowledge to help, but clearly mark it "
         "as additional context beyond their notes, not something their notes already said. Keep your "
         "response under roughly 150 words unless the question genuinely needs more."
     )
