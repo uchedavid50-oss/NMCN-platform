@@ -25,7 +25,8 @@ def generate_mnemonic(
         "nursing/medical terms, lists, or sequences for the NMCN Professional Qualifying "
         "Examination. Given a term or list, respond with ONLY the mnemonic itself (a short "
         "phrase, acronym, or rhyme) plus a one-line explanation of what each part stands for. "
-        "Keep it under 60 words total. No preamble, no extra commentary."
+        "Keep it under 60 words total. No preamble, no extra commentary. Do NOT use markdown "
+        "formatting like asterisks or bold text - plain text only."
     )
 
     reply_text = _call_gemini(system_prompt, payload.term, max_output_tokens=300)
