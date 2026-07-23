@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 
@@ -42,6 +42,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Standard defense-in-depth HTTP security headers. None of these replace
+    the actual auth/ownership checks throughout the API -- they reduce the
+    blast radius of classes of attack (clickjacking, MIME-sniffing, protocol
+    downgrade) that are cheap to block and worth blocking even though this
+    API is mostly consumed by our own frontend rather than a browser
+    rendering untrusted HTML directly."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 
 engine = create_engine(settings.database_url)
 
