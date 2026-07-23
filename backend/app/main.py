@@ -18,14 +18,14 @@ from app.api.achievements import router as achievements_router
 from app.api.cbt_exam import router as cbt_exam_router
 from app.api.clinical_cases import router as clinical_cases_router
 from app.api.admin_content import router as admin_content_router
+from app.api.cgpa import router as cgpa_router
+from app.api.mnemonics import router as mnemonics_router
+from app.api.focus import router as focus_router
 from app.core.config import settings
 
 DEV_DEFAULT_JWT_SECRET = "dev-only-change-this-before-any-real-deployment"
 
 if settings.environment == "production" and settings.jwt_secret_key == DEV_DEFAULT_JWT_SECRET:
-    # Fail fast and loud rather than silently running a production deployment
-    # with a publicly-known JWT signing key — that would let anyone forge
-    # valid login tokens for any user, including admins.
     raise RuntimeError(
         "Refusing to start: ENVIRONMENT=production but JWT_SECRET_KEY is still the "
         "development default. Set a real, random JWT_SECRET_KEY before deploying."
@@ -43,10 +43,6 @@ app.add_middleware(
 
 engine = create_engine(settings.database_url)
 
-# Schema is now managed by Alembic migrations (see migrations/), not by SQLAlchemy's
-# create_all. Run `docker compose exec backend alembic upgrade head` after starting
-# the containers, before hitting any endpoint below.
-
 app.include_router(auth_router)
 app.include_router(subjects_router)
 app.include_router(topics_router)
@@ -63,6 +59,9 @@ app.include_router(achievements_router)
 app.include_router(cbt_exam_router)
 app.include_router(clinical_cases_router)
 app.include_router(admin_content_router)
+app.include_router(cgpa_router)
+app.include_router(mnemonics_router)
+app.include_router(focus_router)
 
 
 @app.get("/health")
