@@ -17,8 +17,8 @@ class User(Base):
     subscription_status = Column(String, nullable=False, default="free")  # free | active | expired
     leaderboard_opt_in = Column(Boolean, nullable=False, default=False)
     display_name = Column(String, nullable=True)
-    # Brute-force login protection: after MAX_FAILED_LOGIN_ATTEMPTS (see auth.py),
-    # locked_until is set and login is rejected until that time passes.
     failed_login_attempts = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime, nullable=True)
+    totp_secret = Column(String, nullable=True)
+    totp_enabled = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=utcnow)

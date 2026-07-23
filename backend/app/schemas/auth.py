@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -31,6 +32,7 @@ class UserOut(BaseModel):
     subscription_status: str
     leaderboard_opt_in: bool
     display_name: str | None
+    totp_enabled: bool
 
     class Config:
         from_attributes = True
@@ -39,3 +41,12 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class TwoFactorSetupResponse(BaseModel):
+    secret: str
+    provisioning_uri: str
+
+
+class TwoFactorCodeRequest(BaseModel):
+    code: str
