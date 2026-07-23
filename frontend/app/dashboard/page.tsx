@@ -142,7 +142,24 @@ export default function DashboardPage() {
         >
           🏅 Achievements
         </Link>
-        {user.role === "admin" && (
+        <Link
+          href="/cgpa"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          CGPA Calculator
+        </Link>
+        <Link
+          href="/mnemonics"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          Mnemonics
+        </Link>
+        <Link
+          href="/focus"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          Focus Session
+        </Link>{user.role === "admin" && (
           <Link
             href="/admin/content"
             className="inline-block rounded-md border border-pulse-coral px-6 py-3 font-body font-medium text-pulse-coral transition hover:bg-pulse-coral/10"
