@@ -14,3 +14,5 @@ frontend/.next/
 # OS noise
 .DS_Store
 Thumbs.db
+
+*.sql
