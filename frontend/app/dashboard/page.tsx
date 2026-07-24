@@ -159,7 +159,8 @@ export default function DashboardPage() {
           className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
         >
           Focus Session
-        </Link><Link
+        </Link>
+        <Link
           href="/dictionary"
           className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
         >
@@ -170,7 +171,14 @@ export default function DashboardPage() {
           className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
         >
           Textbook Library
-        </Link>{user.role === "admin" && (
+        </Link>
+        <Link
+          href="/settings/security"
+          className="inline-block rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition hover:border-vital-teal"
+        >
+          Security Settings
+        </Link>
+        {user.role === "admin" && (
           <Link
             href="/admin/content"
             className="inline-block rounded-md border border-pulse-coral px-6 py-3 font-body font-medium text-pulse-coral transition hover:bg-pulse-coral/10"
@@ -179,6 +187,6 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
-    </main> 
+    </main>
   );
 }

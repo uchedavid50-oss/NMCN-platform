@@ -46,8 +46,8 @@ export interface User {
   subscription_status: string;
   leaderboard_opt_in: boolean;
   display_name: string | null;
+  totp_enabled: boolean;
 }
-
 export interface Subject {
   id: string;
   name: string;
@@ -338,14 +338,24 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
 
-  login: async (email: string, password: string) => {
+ login: async (email: string, password: string, totpCode?: string) => {
     const body = new URLSearchParams({ username: email, password });
+    if (totpCode) body.set("totp_code", totpCode);
     return request<{ access_token: string; token_type: string }>("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
     });
   },
+
+  setupTwoFactor: (token: string) =>
+    request<{ secret: string; provisioning_uri: string }>("/auth/2fa/setup", { method: "POST" }, token),
+
+  verifyTwoFactor: (code: string, token: string) =>
+    request<User>("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ code }) }, token),
+
+  disableTwoFactor: (code: string, token: string) =>
+    request<User>("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ code }) }, token),
 
   me: (token: string) => request<User>("/auth/me", {}, token),
 

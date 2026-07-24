@@ -7,7 +7,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+ login: (email: string, password: string, totpCode?: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -38,8 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  async function login(email: string, password: string) {
-    const { access_token } = await api.login(email, password);
+ async function login(email: string, password: string, totpCode?: string) {
+    const { access_token } = await api.login(email, password, totpCode);
     localStorage.setItem(TOKEN_KEY, access_token);
     setToken(access_token);
     setUser(await api.me(access_token));
