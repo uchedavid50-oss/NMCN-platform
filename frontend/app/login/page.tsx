@@ -9,6 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,13 +104,22 @@ export default function LoginPage() {
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink-navy">Password</span>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="rounded-md border border-mist px-4 py-2 focus:border-vital-teal focus:outline-none"
-          />
+          <div className="flex items-stretch gap-2">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="flex-1 rounded-md border border-mist px-4 py-2 focus:border-vital-teal focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="rounded-md border border-mist px-3 text-xs font-medium text-graphite hover:border-vital-teal hover:text-vital-teal"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
         </label>
         {error && <p className="text-sm text-pulse-coral">{error}</p>}
         <button

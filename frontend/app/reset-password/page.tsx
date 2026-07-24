@@ -11,6 +11,7 @@ function ResetPasswordForm() {
   const token = searchParams.get("token") || "";
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -55,18 +56,27 @@ function ResetPasswordForm() {
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink-navy">New password</span>
-          <input
-            type="password"
-            required
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="rounded-md border border-mist px-4 py-2 focus:border-vital-teal focus:outline-none"
-          />
+          <div className="flex items-stretch gap-2">
+            <input
+              type={showPasswords ? "text" : "password"}
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="flex-1 rounded-md border border-mist px-4 py-2 focus:border-vital-teal focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasswords((s) => !s)}
+              className="rounded-md border border-mist px-3 text-xs font-medium text-graphite hover:border-vital-teal hover:text-vital-teal"
+            >
+              {showPasswords ? "Hide" : "Show"}
+            </button>
+          </div>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink-navy">Confirm new password</span>
           <input
-            type="password"
+            type={showPasswords ? "text" : "password"}
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
