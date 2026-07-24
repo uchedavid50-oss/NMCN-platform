@@ -44,103 +44,109 @@ export default function LoginPage() {
 
   if (requiresTwoFactor) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-        <h1 className="font-display text-3xl font-semibold text-ink-navy">Enter your code</h1>
-        <p className="mt-2 text-graphite">
-          Open your authenticator app and enter the 6-digit code for this account.
-        </p>
-        <form onSubmit={handleTwoFactorSubmit} className="mt-8 flex flex-col gap-4">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-ink-navy">Authentication code</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              required
-              maxLength={6}
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value)}
-              className="rounded-md border border-mist px-4 py-2 text-center font-mono text-lg tracking-widest focus:border-vital-teal focus:outline-none"
-            />
-          </label>
-          {error && <p className="text-sm text-pulse-coral">{error}</p>}
-          <button
-            type="submit"
-            disabled={submitting || totpCode.length !== 6}
-            className="mt-2 rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
-          >
-            {submitting ? "Verifying…" : "Verify and log in"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setRequiresTwoFactor(false);
-              setTotpCode("");
-              setError(null);
-            }}
-            className="text-sm text-graphite hover:underline"
-          >
-            ← Back
-          </button>
-        </form>
+      <main className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center overflow-hidden px-6">
+        <div className="ambient-glow" />
+        <div className="auth-card animate-fade-in-up p-8">
+          <h1 className="font-display text-3xl font-semibold text-ink-navy">Enter your code</h1>
+          <p className="mt-2 text-graphite">
+            Open your authenticator app and enter the 6-digit code for this account.
+          </p>
+          <form onSubmit={handleTwoFactorSubmit} className="mt-8 flex flex-col gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-ink-navy">Authentication code</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoFocus
+                required
+                maxLength={6}
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                className="rounded-md border border-mist px-4 py-2 text-center font-mono text-lg tracking-widest transition-colors focus:border-vital-teal focus:outline-none"
+              />
+            </label>
+            {error && <p className="text-sm text-pulse-coral">{error}</p>}
+            <button
+              type="submit"
+              disabled={submitting || totpCode.length !== 6}
+              className="mt-2 rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-navy hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+            >
+              {submitting ? "Verifying…" : "Verify and log in"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRequiresTwoFactor(false);
+                setTotpCode("");
+                setError(null);
+              }}
+              className="text-sm text-graphite transition-colors hover:text-vital-teal hover:underline"
+            >
+              ← Back
+            </button>
+          </form>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="font-display text-3xl font-semibold text-ink-navy">Log in</h1>
-      <p className="mt-2 text-graphite">Pick up where you left off.</p>
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink-navy">Email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded-md border border-mist px-4 py-2 focus:border-vital-teal focus:outline-none"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink-navy">Password</span>
-          <div className="flex items-stretch gap-2">
+    <main className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center overflow-hidden px-6">
+      <div className="ambient-glow" />
+      <div className="auth-card animate-fade-in-up p-8">
+        <h1 className="font-display text-3xl font-semibold text-ink-navy">Log in</h1>
+        <p className="mt-2 text-graphite">Pick up where you left off.</p>
+        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-ink-navy">Email</span>
             <input
-              type={showPassword ? "text" : "password"}
+              type="email"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="flex-1 rounded-md border border-mist px-4 py-2 focus:border-vital-teal focus:outline-none"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="rounded-md border border-mist px-4 py-2 transition-colors focus:border-vital-teal focus:outline-none"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="rounded-md border border-mist px-3 text-xs font-medium text-graphite hover:border-vital-teal hover:text-vital-teal"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-        </label>
-        {error && <p className="text-sm text-pulse-coral">{error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-2 rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
-        >
-          {submitting ? "Logging in…" : "Log in"}
-        </button>
-      </form>
-      <p className="mt-3 text-sm text-graphite">
-        <Link href="/forgot-password" className="text-vital-teal hover:underline">
-          Forgot your password?
-        </Link>
-      </p>
-      <p className="mt-6 text-sm text-graphite">
-        Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-medium text-vital-teal hover:underline">
-          Sign up
-        </Link>
-      </p>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-ink-navy">Password</span>
+            <div className="flex items-stretch gap-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="flex-1 rounded-md border border-mist px-4 py-2 transition-colors focus:border-vital-teal focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="rounded-md border border-mist px-3 text-xs font-medium text-graphite transition-colors hover:border-vital-teal hover:text-vital-teal"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </label>
+          {error && <p className="text-sm text-pulse-coral">{error}</p>}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-2 rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-navy hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          >
+            {submitting ? "Logging in…" : "Log in"}
+          </button>
+        </form>
+        <p className="mt-3 text-sm text-graphite">
+          <Link href="/forgot-password" className="text-vital-teal hover:underline">
+            Forgot your password?
+          </Link>
+        </p>
+        <p className="mt-6 text-sm text-graphite">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-vital-teal hover:underline">
+            Sign up
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

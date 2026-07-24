@@ -4,7 +4,6 @@
 
 :root {
   --chart-line: #0e7c7b;
-
   --color-ink-navy: #0f2438;
   --color-chart-cream: #f7f5f0;
   --color-vital-teal: #0e7c7b;
@@ -16,10 +15,6 @@
 
 .dark {
   --chart-line: #2fd9c7;
-
-  /* Headings/body text and background swap roles in dark mode — same tokens,
-     inverted meaning, so every page using them re-themes automatically
-     without touching each page's markup. */
   --color-ink-navy: #f2f5f7;
   --color-chart-cream: #0b1622;
   --color-vital-teal: #2fd9c7;
@@ -35,9 +30,6 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Signature element: a pulse-line trace used on the auth pages and, later,
-   on readiness/score screens. Calm and steady rather than jagged — the
-   platform's whole point is to make exam-day nerves feel measured. */
 .pulse-trace {
   stroke: var(--chart-line);
   stroke-width: 2;
@@ -53,9 +45,65 @@ body {
   }
 }
 
+/* Premium polish: subtle staggered entrance for hero/form content, and a
+   soft ambient glow behind key pages, rather than anything flashy — the
+   platform's whole design language is "calm confidence", not excitement. */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.delay-1 {
+  animation-delay: 0.08s;
+}
+.delay-2 {
+  animation-delay: 0.16s;
+}
+.delay-3 {
+  animation-delay: 0.24s;
+}
+.delay-4 {
+  animation-delay: 0.32s;
+}
+
+.ambient-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--color-vital-teal) 10%, transparent), transparent 45%),
+    radial-gradient(circle at 85% 75%, color-mix(in srgb, var(--color-pulse-coral) 7%, transparent), transparent 45%);
+}
+
+.auth-card {
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-mist);
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(15, 36, 56, 0.04), 0 12px 32px -12px rgba(15, 36, 56, 0.12);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.auth-card:hover {
+  box-shadow: 0 1px 2px rgba(15, 36, 56, 0.05), 0 20px 40px -14px rgba(15, 36, 56, 0.16);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pulse-trace {
+  .pulse-trace,
+  .animate-fade-in-up {
     animation: none;
     stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
   }
 }
