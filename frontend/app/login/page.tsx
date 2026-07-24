@@ -22,7 +22,6 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
-        // Password was correct -- server is asking for the second factor.
         setRequiresTwoFactor(true);
       } else {
         setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
@@ -121,6 +120,11 @@ export default function LoginPage() {
           {submitting ? "Logging in…" : "Log in"}
         </button>
       </form>
+      <p className="mt-3 text-sm text-graphite">
+        <Link href="/forgot-password" className="text-vital-teal hover:underline">
+          Forgot your password?
+        </Link>
+      </p>
       <p className="mt-6 text-sm text-graphite">
         Don&apos;t have an account?{" "}
         <Link href="/signup" className="font-medium text-vital-teal hover:underline">
