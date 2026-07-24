@@ -163,10 +163,11 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
         reset_link = f"{settings.frontend_url}/reset-password?token={token}"
         try:
             send_password_reset_email(user.email, reset_link)
-        except Exception:
-            # Don't leak email-delivery failures to the caller either -- same
-            # reasoning as not leaking whether the account exists.
-            pass
+        except Exception as exc:
+            # Log the real error server-side for debugging, but never expose
+            # it to the caller -- same reasoning as not leaking whether the
+            # account exists.
+            print(f"[forgot-password] Failed to send reset email to {user.email}: {exc}")
 
     return {"message": "If that email is registered, a password reset link has been sent."}
 
