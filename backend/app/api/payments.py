@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import uuid
-from datetime import timedelta
 
 from app.core.time import utcnow
 
@@ -22,12 +21,11 @@ from app.schemas.payment import (
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
-# Fixed plan catalogue for MVP — a real "plans" table/admin UI can come later if needed.
+# One-time payment, lifetime access -- no recurring charge, no expiry.
+# Kept as a dict (not a single constant) so a second tier could be added
+# later without changing the endpoint shape.
 PLAN_PRICES_KOBO = {
-    "premium_monthly": 500000,  # ₦5,000
-}
-PLAN_DURATION_DAYS = {
-    "premium_monthly": 30,
+    "premium_lifetime": 500000,  # ₦5,000, one-time
 }
 
 
@@ -123,11 +121,12 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         subscription = db.query(Subscription).filter(Subscription.reference == reference).first()
         if subscription and subscription.status != "active":
             now = utcnow()
-            duration_days = PLAN_DURATION_DAYS.get(subscription.plan, 30)
 
             subscription.status = "active"
             subscription.activated_at = now
-            subscription.expires_at = now + timedelta(days=duration_days)
+            # One-time payment, lifetime access -- deliberately no expires_at.
+            # A student who has paid once should never be silently downgraded.
+            subscription.expires_at = None
 
             user = db.query(User).filter(User.id == subscription.user_id).first()
             if user:
@@ -135,8 +134,6 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
 
             db.commit()
 
-    # Paystack expects a 200 regardless of whether we recognized the event,
-    # otherwise it will keep retrying the same webhook.
     return {"received": True}
 
 

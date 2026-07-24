@@ -3,11 +3,14 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRequireAuth } from "@/lib/use-require-auth";
 import { getSubscriptionStatus, SubscriptionStatus } from "@/lib/api-extras-4";
+import { Confetti } from "@/components/Confetti";
+import { Mascot } from "@/components/Mascot";
 
 function PaymentCallbackContent() {
   const { user, token, loading } = useRequireAuth();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [attempts, setAttempts] = useState(0);
+  const [celebrated, setCelebrated] = useState(false);
   const MAX_ATTEMPTS = 6;
 
   useEffect(() => {
@@ -29,6 +32,12 @@ function PaymentCallbackContent() {
     return () => clearTimeout(t);
   }, [token, status, attempts]);
 
+  const isActive = status?.status === "active";
+
+  useEffect(() => {
+    if (isActive) setCelebrated(true);
+  }, [isActive]);
+
   if (loading || !user) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -37,14 +46,14 @@ function PaymentCallbackContent() {
     );
   }
 
-  const isActive = status?.status === "active";
   const stillWaiting = !isActive && attempts < MAX_ATTEMPTS;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
+      {celebrated && <Confetti />}
       {isActive ? (
         <>
-          <p className="text-4xl">✅</p>
+          <Mascot className="h-24 w-24" />
           <h1 className="mt-4 font-display text-2xl font-semibold text-ink-navy">
             You're all set!
           </h1>

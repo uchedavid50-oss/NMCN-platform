@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PulseTrace } from "@/components/PulseTrace";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Mascot } from "@/components/Mascot";
 export default function Home() {
   return (
     <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col justify-center overflow-hidden px-6 py-16">
@@ -8,9 +9,12 @@ export default function Home() {
       <div className="absolute right-6 top-6">
         <ThemeToggle />
       </div>
-      <p className="animate-fade-in-up font-mono text-sm uppercase tracking-widest text-vital-teal">
-        NMCN Professional Qualifying Examination
-      </p>
+      <div className="animate-fade-in-up flex items-center gap-4">
+        <Mascot className="h-16 w-16 shrink-0" />
+        <p className="font-mono text-sm uppercase tracking-widest text-vital-teal">
+          NMCN Professional Qualifying Examination
+        </p>
+      </div>
       <h1 className="animate-fade-in-up delay-1 mt-4 font-display text-5xl font-semibold leading-tight text-ink-navy">
         Know you&apos;re ready, before exam day does.
       </h1>

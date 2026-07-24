@@ -5,8 +5,8 @@ import { useRequireAuth } from "@/lib/use-require-auth";
 import { ApiError } from "@/lib/api";
 import { initializePayment, getSubscriptionStatus, SubscriptionStatus } from "@/lib/api-extras-4";
 
-const PLAN = "premium_monthly";
-const PLAN_LABEL = "Premium — ₦5,000/month";
+const PLAN = "premium_lifetime";
+const PLAN_LABEL = "Premium — ₦5,000 one-time";
 
 export default function SubscribePage() {
   const { user, token, loading } = useRequireAuth();
