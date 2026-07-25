@@ -225,6 +225,43 @@ def approve_pending_question(
     return pending
 
 
+@router.post("/pending/approve-all")
+def approve_all_pending_questions(
+    topic_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Bulk-publishes every currently-pending question (optionally scoped to
+    one topic) straight into the official bank, skipping individual review.
+    A deliberate trade-off: faster at volume, but gives up the per-question
+    quality check the review queue exists for. Use when you've already
+    spot-checked enough batches to trust the pattern, not as a default."""
+    query = db.query(PendingQuestion).options(joinedload(PendingQuestion.options)).filter(
+        PendingQuestion.status == "pending"
+    )
+    if topic_id:
+        query = query.filter(PendingQuestion.topic_id == topic_id)
+
+    pending_list = query.all()
+    approved_count = 0
+
+    for pending in pending_list:
+        question = Question(
+            topic_id=pending.topic_id,
+            stem=pending.stem,
+            difficulty=pending.difficulty,
+            explanation=pending.explanation,
+        )
+        question.options = [Option(text=o.text, is_correct=o.is_correct) for o in pending.options]
+        db.add(question)
+        pending.status = "approved"
+        pending.reviewed_at = utcnow()
+        approved_count += 1
+
+    db.commit()
+    return {"approved_count": approved_count}
+
+
 @router.post("/pending/{pending_id}/reject", response_model=PendingQuestionOut)
 def reject_pending_question(
     pending_id: uuid.UUID,

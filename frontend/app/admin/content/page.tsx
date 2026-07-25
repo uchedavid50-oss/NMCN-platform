@@ -11,6 +11,7 @@ import {
   PendingQuestionOut,
   Topic,
 } from "@/lib/api";
+import { approveAllPending } from "@/lib/api-extras-5";
 
 export default function AdminContentPage() {
   const { user, token, loading } = useRequireAuth();
@@ -32,6 +33,8 @@ export default function AdminContentPage() {
   const [selectedTopicId, setSelectedTopicId] = useState("");
   const [genCount, setGenCount] = useState(10);
   const [generating, setGenerating] = useState(false);
+  const [bulkApproving, setBulkApproving] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
   function refreshAll() {
     if (!token) return;
@@ -129,6 +132,27 @@ export default function AdminContentPage() {
       refreshAll();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't reject.");
+    }
+  }
+
+  async function handleApproveAll() {
+    if (!token || pending.length === 0) return;
+    const confirmed = window.confirm(
+      `Approve all ${pending.length} pending question(s) without reviewing them individually? This publishes them straight to the official bank.`
+    );
+    if (!confirmed) return;
+
+    setBulkApproving(true);
+    setBulkMessage(null);
+    setError(null);
+    try {
+      const result = await approveAllPending(token);
+      setBulkMessage(`Approved ${result.approved_count} question(s).`);
+      refreshAll();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Bulk approve failed.");
+    } finally {
+      setBulkApproving(false);
     }
   }
 
@@ -245,9 +269,25 @@ export default function AdminContentPage() {
 
       {/* Pending review queue */}
       <section className="mt-6">
-        <h2 className="font-display text-xl font-semibold text-ink-navy">
-          Pending review ({pending.length})
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold text-ink-navy">
+            Pending review ({pending.length})
+          </h2>
+          {pending.length > 0 && (
+            <button
+              onClick={handleApproveAll}
+              disabled={bulkApproving}
+              className="rounded-md bg-vital-teal px-4 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+            >
+              {bulkApproving ? "Approving…" : `✅ Approve all ${pending.length}`}
+            </button>
+          )}
+        </div>
+        {bulkMessage && <p className="mt-2 text-sm text-vital-teal">{bulkMessage}</p>}
+        <p className="mt-1 text-xs text-graphite">
+          Bulk-approving skips individual review — use once you trust the pattern from a few
+          spot-checked batches, not as a default.
+        </p>
         <div className="mt-4 flex flex-col gap-4">
           {pending.map((q) => (
             <div key={q.id} className="rounded-md border border-mist bg-card-bg p-5">
