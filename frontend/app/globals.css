@@ -150,3 +150,73 @@ body {
     animation: none;
   }
 }
+
+/* Cartoon-style playful bounce for feature icons — squash & stretch,
+   like a classic cartoon character hopping in place. */
+@keyframes cartoon-bob {
+  0%, 100% {
+    transform: translateY(0) scale(1, 1) rotate(-6deg);
+  }
+  30% {
+    transform: translateY(-14px) scale(0.92, 1.1) rotate(8deg);
+  }
+  55% {
+    transform: translateY(0) scale(1.12, 0.88) rotate(-4deg);
+  }
+  75% {
+    transform: translateY(-4px) scale(1, 1) rotate(4deg);
+  }
+}
+
+.animate-cartoon-bob {
+  animation: cartoon-bob 1.4s ease-in-out infinite;
+}
+
+@keyframes excited-jiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-8deg);
+  }
+  40% {
+    transform: rotate(8deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  80% {
+    transform: rotate(6deg);
+  }
+}
+
+.group:hover .group-hover\:animate-jiggle {
+  animation: excited-jiggle 0.5s ease-in-out infinite;
+}
+
+@keyframes sparkle-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3) rotate(180deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8) rotate(360deg);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkle-pop 0.8s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cartoon-bob,
+  .animate-sparkle,
+  .group:hover .group-hover\:animate-jiggle {
+    animation: none;
+  }
+}

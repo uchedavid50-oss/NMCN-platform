@@ -1,0 +1,17 @@
+{
+  "name": "NMCN CBT Prep",
+  "short_name": "NMCN Prep",
+  "description": "Exam-readiness practice for the NMCN Professional Qualifying Examination.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#0e7c7b",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
