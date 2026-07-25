@@ -76,8 +76,8 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <div className="animate-fade-in-up delay-1 flex-1">
-          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-mist shadow-xl">
+        <div className="animate-fade-in-up delay-1 w-full flex-1">
+          <div className="relative aspect-[4/5] min-h-[320px] w-full overflow-hidden rounded-2xl border border-mist shadow-xl">
             {/*
               Download a free-to-use photo from Unsplash (search "nurse" or
               "nursing student") and save it as:
