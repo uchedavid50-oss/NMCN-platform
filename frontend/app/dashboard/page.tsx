@@ -262,7 +262,7 @@ export default function DashboardPage() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-mist bg-card-bg px-4 py-8 transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:shrink-0 md:block ${
+       className={`fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto transform border-r border-mist bg-card-bg px-4 py-8 transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:shrink-0 md:block ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
