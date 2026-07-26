@@ -193,6 +193,7 @@ function SubjectCard({
 export default function DashboardPage() {
   const { user, token, loading } = useRequireAuth();
   const pathname = usePathname();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [streak, setStreak] = useState<number | null>(null);
   const [playedToday, setPlayedToday] = useState<boolean | null>(null);
   const [subjectProgress, setSubjectProgress] = useState<SubjectProgress[] | null>(null);
@@ -254,7 +255,17 @@ export default function DashboardPage() {
       <div className="ambient-glow" />
 
       {/* Sidebar */}
-      <aside className="hidden w-56 shrink-0 border-r border-mist bg-card-bg px-4 py-8 md:block">
+      {mobileNavOpen && (
+        <div
+          onClick={() => setMobileNavOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-mist bg-card-bg px-4 py-8 transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:shrink-0 md:block ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <p className="px-2 font-display text-lg font-semibold text-ink-navy">NMCN CBT Prep</p>
         <nav className="mt-8 flex flex-col gap-6">
           <Link
@@ -298,11 +309,20 @@ export default function DashboardPage() {
       {/* Main content */}
       <main className="flex-1 px-6 py-10 sm:px-10">
         <div className="animate-fade-in-up flex items-center justify-between">
-          <div>
-            <p className="font-mono text-sm uppercase tracking-widest text-vital-teal">Dashboard</p>
-            <h1 className="mt-1 font-display text-2xl font-semibold text-ink-navy sm:text-3xl">
-              Hi, {user.display_name || user.email} 👋
-            </h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="rounded-md border border-mist p-2 text-ink-navy md:hidden"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+            <div>
+              <p className="font-mono text-sm uppercase tracking-widest text-vital-teal">Dashboard</p>
+              <h1 className="mt-1 font-display text-2xl font-semibold text-ink-navy sm:text-3xl">
+                Hi, {user.display_name || user.email} 👋
+              </h1>
+            </div>
           </div>
           <ProfileMenu isAdmin={user.role === "admin"} />
         </div>
