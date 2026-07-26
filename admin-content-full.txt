@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -35,16 +35,16 @@ export default function AdminContentPage() {
   const [genCount, setGenCount] = useState(10);
   const [extractionMode, setExtractionMode] = useState("ai_generate");
   const [generating, setGenerating] = useState(false);
- const [bulkTarget, setBulkTarget] = useState(100);
-const [bulkProgress, setBulkProgress] = useState(0);
-const [bulkRunning, setBulkRunning] = useState(false);
-const [bulkStatus, setBulkStatus] = useState("");
-const [useDocument, setUseDocument] = useState(true);
-const [bulkScope, setBulkScope] = useState("single"); // "single" | "all_topics"
-const [noteGenerating, setNoteGenerating] = useState(false);
-const [noteBulkRunning, setNoteBulkRunning] = useState(false);
-const [noteBulkProgress, setNoteBulkProgress] = useState(0);
-const [noteBulkStatus, setNoteBulkStatus] = useState("");
+  const [bulkTarget, setBulkTarget] = useState(100);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState("");
+  const [useDocument, setUseDocument] = useState(true);
+  const [bulkScope, setBulkScope] = useState("single"); // "single" | "all_topics"
+  const [noteGenerating, setNoteGenerating] = useState(false);
+  const [noteBulkRunning, setNoteBulkRunning] = useState(false);
+  const [noteBulkProgress, setNoteBulkProgress] = useState(0);
+  const [noteBulkStatus, setNoteBulkStatus] = useState("");
   const [bulkApproving, setBulkApproving] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
@@ -126,30 +126,31 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
       setGenerating(false);
     }
   }
-async function generateForOneTopic(topicId: string, target: number, docId: string | null) {
-  const batchSize = 30;
-  let totalCreated = 0;
-  let consecutiveFailures = 0;
-  while (totalCreated < target) {
-    const remaining = target - totalCreated;
-    const thisBatch = Math.min(batchSize, remaining);
-    try {
-      const result = await api.generatePendingQuestions(
-        docId,
-        topicId,
-        thisBatch,
-        token!,
-        extractionMode
-      );
-      totalCreated += result.length;
-      consecutiveFailures = 0;
-      if (result.length === 0) break;
-    } catch (err) {
-      consecutiveFailures += 1;
-      if (consecutiveFailures >= 2) break; // give up on this topic after 2 failed batches in a row
+
+  async function generateForOneTopic(topicId: string, target: number, docId: string | null) {
+    const batchSize = 30;
+    let totalCreated = 0;
+    let consecutiveFailures = 0;
+    while (totalCreated < target) {
+      const remaining = target - totalCreated;
+      const thisBatch = Math.min(batchSize, remaining);
+      try {
+        const result = await api.generatePendingQuestions(
+          docId,
+          topicId,
+          thisBatch,
+          token!,
+          extractionMode
+        );
+        totalCreated += result.length;
+        consecutiveFailures = 0;
+        if (result.length === 0) break;
+      } catch (err) {
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 2) break;
+      }
     }
-  }
- return totalCreated;
+    return totalCreated;
   }
 
   async function handleBulkGenerate() {
@@ -185,7 +186,7 @@ async function generateForOneTopic(topicId: string, target: number, docId: strin
     }
   }
 
-async function handleGenerateNote() {
+  async function handleGenerateNote() {
     if (!token || !selectedTopicId) return;
     setNoteGenerating(true);
     setError(null);
@@ -199,30 +200,31 @@ async function handleGenerateNote() {
   }
 
   async function handleBulkGenerateNotes() {
-  if (!token) return;
-  setNoteBulkRunning(true);
-  setNoteBulkProgress(0);
-  setError(null);
-  let done = 0;
-  let consecutiveFailures = 0;
-  try {
-    for (const topic of topics) {
-      setNoteBulkStatus(topic.name);
-      try {
-        await generateTopicNote(topic.id, token);
-        consecutiveFailures = 0;
-      } catch {
-        consecutiveFailures += 1;
-        if (consecutiveFailures >= 3) break; // stop if AI seems to be consistently failing
+    if (!token) return;
+    setNoteBulkRunning(true);
+    setNoteBulkProgress(0);
+    setError(null);
+    let done = 0;
+    let consecutiveFailures = 0;
+    try {
+      for (const topic of topics) {
+        setNoteBulkStatus(topic.name);
+        try {
+          await generateTopicNote(topic.id, token);
+          consecutiveFailures = 0;
+        } catch {
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 3) break;
+        }
+        done += 1;
+        setNoteBulkProgress(done);
       }
-      done += 1;
-      setNoteBulkProgress(done);
+    } finally {
+      setNoteBulkRunning(false);
+      setNoteBulkStatus("");
     }
-  } finally {
-    setNoteBulkRunning(false);
-    setNoteBulkStatus("");
   }
-}
+
   async function handleApprove(id: string) {
     if (!token) return;
     try {
@@ -381,15 +383,15 @@ async function handleGenerateNote() {
             </div>
 
             <div className="mt-4 flex flex-col gap-3 border-t border-mist pt-4">
-                <div className="flex items-center gap-4 text-sm text-graphite">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={useDocument}
-                      onChange={() => setUseDocument(true)}
-                    />
-                    Use uploaded document
-                  </label>
+              <div className="flex items-center gap-4 text-sm text-graphite">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={useDocument}
+                    onChange={() => setUseDocument(true)}
+                  />
+                  Use uploaded document
+                </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
@@ -444,10 +446,11 @@ async function handleGenerateNote() {
                 </button>
               </div>
             </div>
-            </div>
+          </div>
         )}
       </section>
-{/* Study notes generation */}
+
+      {/* Study notes generation */}
       <section className="mt-6 rounded-md border border-mist bg-card-bg p-5">
         <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
           Generate study notes (per topic, replaces existing note)
@@ -475,6 +478,7 @@ async function handleGenerateNote() {
           </button>
         </div>
       </section>
+
       {/* Pending review queue */}
       <section className="mt-6">
         <div className="flex items-center justify-between">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -23,7 +23,7 @@ export default function SubjectTopicsPage() {
   if (loading || !user) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="font-mono text-sm text-graphite">Loading…</p>
+        <p className="font-mono text-sm text-graphite">Loadingâ€¦</p>
       </main>
     );
   }
@@ -31,7 +31,7 @@ export default function SubjectTopicsPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <Link href="/subjects" className="text-sm text-vital-teal hover:underline">
-        ← Back to subjects
+        â† Back to subjects
       </Link>
       <p className="mt-4 font-mono text-sm uppercase tracking-widest text-vital-teal">Topics</p>
       <h1 className="mt-1 font-display text-3xl font-semibold text-ink-navy">
@@ -42,7 +42,7 @@ export default function SubjectTopicsPage() {
 
       {topics && topics.length === 0 && (
         <p className="mt-6 text-graphite">
-          No topics have been added to this subject yet — check back soon.
+          No topics have been added to this subject yet â€” check back soon.
         </p>
       )}
 
@@ -54,12 +54,6 @@ export default function SubjectTopicsPage() {
           >
             <span className="font-body text-lg text-ink-navy">{topic.name}</span>
             <div className="flex gap-2">
-              <Link
-                href={`/notes-study/${topic.id}`}
-                className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal"
-              >
-                Study Notes
-              </Link>
               <Link
                 href={`/flashcards/${topic.id}`}
                 className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal"
@@ -85,3 +79,4 @@ export default function SubjectTopicsPage() {
     </main>
   );
 }
+
