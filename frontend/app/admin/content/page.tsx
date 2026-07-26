@@ -32,7 +32,14 @@ export default function AdminContentPage() {
   const [selectedDocId, setSelectedDocId] = useState("");
   const [selectedTopicId, setSelectedTopicId] = useState("");
   const [genCount, setGenCount] = useState(10);
+  const [extractionMode, setExtractionMode] = useState("ai_generate");
   const [generating, setGenerating] = useState(false);
+ const [bulkTarget, setBulkTarget] = useState(100);
+const [bulkProgress, setBulkProgress] = useState(0);
+const [bulkRunning, setBulkRunning] = useState(false);
+const [bulkStatus, setBulkStatus] = useState("");
+const [useDocument, setUseDocument] = useState(true);
+const [bulkScope, setBulkScope] = useState("single"); // "single" | "all_topics"
   const [bulkApproving, setBulkApproving] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
@@ -106,7 +113,7 @@ export default function AdminContentPage() {
     setGenerating(true);
     setError(null);
     try {
-      await api.generatePendingQuestions(selectedDocId, selectedTopicId, genCount, token);
+      await api.generatePendingQuestions(selectedDocId, selectedTopicId, genCount, token, extractionMode);
       refreshAll();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Generation failed.");
@@ -114,7 +121,64 @@ export default function AdminContentPage() {
       setGenerating(false);
     }
   }
+async function generateForOneTopic(topicId: string, target: number, docId: string | null) {
+  const batchSize = 30;
+  let totalCreated = 0;
+  let consecutiveFailures = 0;
+  while (totalCreated < target) {
+    const remaining = target - totalCreated;
+    const thisBatch = Math.min(batchSize, remaining);
+    try {
+      const result = await api.generatePendingQuestions(
+        docId,
+        topicId,
+        thisBatch,
+        token!,
+        extractionMode
+      );
+      totalCreated += result.length;
+      consecutiveFailures = 0;
+      if (result.length === 0) break;
+    } catch (err) {
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= 2) break; // give up on this topic after 2 failed batches in a row
+    }
+  }
+  return totalCreated;
+}
 
+async function handleBulkGenerate() {
+  if (!token) return;
+  if (useDocument && !selectedDocId) return;
+  if (bulkScope === "single" && !selectedTopicId) return;
+
+  setBulkRunning(true);
+  setBulkProgress(0);
+  setError(null);
+  const docId = useDocument ? selectedDocId : null;
+
+  try {
+    if (bulkScope === "single") {
+      setBulkStatus(topics.find((t) => t.id === selectedTopicId)?.name || "");
+      const created = await generateForOneTopic(selectedTopicId, bulkTarget, docId);
+      setBulkProgress(created);
+    } else {
+      let grandTotal = 0;
+      for (const topic of topics) {
+        setBulkStatus(topic.name);
+        const created = await generateForOneTopic(topic.id, bulkTarget, docId);
+        grandTotal += created;
+        setBulkProgress(grandTotal);
+      }
+    }
+    refreshAll();
+  } catch (err) {
+    setError(err instanceof ApiError ? err.message : "Bulk generation failed.");
+  } finally {
+    setBulkRunning(false);
+    setBulkStatus("");
+  }
+}
   async function handleApprove(id: string) {
     if (!token) return;
     try {
@@ -247,6 +311,14 @@ export default function AdminContentPage() {
               ))}
             </select>
             <div className="flex items-center gap-2">
+              <select
+                value={extractionMode}
+                onChange={(e) => setExtractionMode(e.target.value)}
+                className="rounded-md border border-mist px-2 py-2 text-sm"
+              >
+                <option value="ai_generate">AI generate (new questions)</option>
+                <option value="verbatim">Copy verbatim (exact + rationale)</option>
+              </select>
               <input
                 type="number"
                 min={1}
@@ -263,7 +335,72 @@ export default function AdminContentPage() {
                 {generating ? "Generating…" : "Generate questions"}
               </button>
             </div>
-          </div>
+
+            <div className="mt-4 flex flex-col gap-3 border-t border-mist pt-4">
+                <div className="flex items-center gap-4 text-sm text-graphite">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={useDocument}
+                      onChange={() => setUseDocument(true)}
+                    />
+                    Use uploaded document
+                  </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={!useDocument}
+                    onChange={() => setUseDocument(false)}
+                  />
+                  AI knowledge only (no document)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-4 text-sm text-graphite">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={bulkScope === "single"}
+                    onChange={() => setBulkScope("single")}
+                  />
+                  Selected topic only
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={bulkScope === "all_topics"}
+                    onChange={() => setBulkScope("all_topics")}
+                  />
+                  All topics ({topics.length})
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-graphite">Target per topic:</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={2000}
+                  value={bulkTarget}
+                  onChange={(e) => setBulkTarget(Number(e.target.value))}
+                  className="w-24 rounded-md border border-mist px-2 py-2 text-sm"
+                />
+                <button
+                  onClick={handleBulkGenerate}
+                  disabled={
+                    bulkRunning ||
+                    (useDocument && !selectedDocId) ||
+                    (bulkScope === "single" && !selectedTopicId)
+                  }
+                  className="rounded-md border border-vital-teal px-5 py-2 text-sm font-medium text-vital-teal transition hover:bg-vital-teal/10 disabled:opacity-50"
+                >
+                  {bulkRunning
+                    ? `Generating "${bulkStatus}"… (${bulkProgress} total)`
+                    : `Bulk generate`}
+                </button>
+              </div>
+            </div>
+            </div>
         )}
       </section>
 

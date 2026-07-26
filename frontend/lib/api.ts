@@ -583,10 +583,10 @@ export const api = {
 
   listAdminDocuments: (token: string) => request<AdminDocument[]>("/admin/content/documents", {}, token),
 
-  generatePendingQuestions: (documentId: string, topicId: string, count: number, token: string) =>
+  generatePendingQuestions: (documentId: string | null, topicId: string, count: number, token: string, extractionMode: string = "ai_generate") =>
     request<PendingQuestionOut[]>(
       "/admin/content/generate",
-      { method: "POST", body: JSON.stringify({ document_id: documentId, topic_id: topicId, count }) },
+      { method: "POST", body: JSON.stringify({ document_id: documentId, topic_id: topicId, count, extraction_mode: extractionMode }) },
       token
     ),
 

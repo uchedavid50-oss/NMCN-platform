@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
 };
 export const viewport = {
+  width: "device-width",
+  initialScale: 1,
   themeColor: "#0e7c7b",
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {

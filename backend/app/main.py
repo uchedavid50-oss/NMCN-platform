@@ -23,6 +23,7 @@ from app.api.mnemonics import router as mnemonics_router
 from app.api.focus import router as focus_router
 from app.api.dictionary import router as dictionary_router
 from app.api.textbooks import router as textbooks_router
+from app.api.past_questions import router as past_questions_router
 from app.core.config import settings
 
 DEV_DEFAULT_JWT_SECRET = "dev-only-change-this-before-any-real-deployment"
@@ -83,6 +84,7 @@ app.include_router(mnemonics_router)
 app.include_router(focus_router)
 app.include_router(dictionary_router)
 app.include_router(textbooks_router)
+app.include_router(past_questions_router)
 
 
 @app.get("/health")

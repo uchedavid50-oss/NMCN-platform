@@ -90,9 +90,12 @@ def generate_pending_questions(
 ):
     _check_tutor_available(db, admin.id)
 
-    document = db.query(AdminDocument).filter(AdminDocument.id == payload.document_id).first()
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+    document = None
+    if payload.document_id:
+        document = db.query(AdminDocument).filter(AdminDocument.id == payload.document_id).first()
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
     topic = (
         db.query(Topic)
         .options(joinedload(Topic.subject))
@@ -105,17 +108,35 @@ def generate_pending_questions(
     exam_type = topic.subject.exam_type if topic.subject else "NMCN"
     exam_framing = EXAM_FRAMING.get(exam_type, EXAM_FRAMING["NMCN"])
 
-    if document.document_type == "past_questions":
+    if document is None:
+        instruction = (
+            "No source document was provided. Use your own nursing knowledge to write "
+            "original, accurate exam-style questions on this topic."
+        )
+        source_material = f"Topic: {topic.name} (Subject: {topic.subject.name if topic.subject else 'General'})"
+    elif payload.extraction_mode == "verbatim" and document.document_type == "past_questions":
+        instruction = (
+            "The source material below contains PAST EXAM QUESTIONS. Extract each question "
+            "EXACTLY as written — same wording, same options, same order. Do NOT paraphrase, "
+            "reword, or invent new questions. If the source includes a rationale/explanation "
+            "for the correct answer, copy that rationale verbatim too. If a question has no "
+            "explanation in the source, write a brief factual explanation of why the correct "
+            "answer is correct, based only on the source content."
+        )
+        source_material = f"Source material:\n\n{document.extracted_text}"
+    elif document.document_type == "past_questions":
         instruction = (
             "The source material below contains PAST EXAM QUESTIONS. Do NOT copy any question "
             "verbatim. Instead, write NEW original questions that test the same underlying concepts "
             "and difficulty level, in your own wording, inspired by the patterns you see."
         )
+        source_material = f"Source material:\n\n{document.extracted_text}"
     else:
         instruction = (
             "The source material below is textbook/study content. Write original exam-style "
             "questions covering the concepts it teaches."
         )
+        source_material = f"Source material:\n\n{document.extracted_text}"
 
     system_prompt = (
         f"You write exam-style practice questions for a nursing student preparing for "
@@ -130,7 +151,7 @@ def generate_pending_questions(
 
     reply_text = _call_gemini(
         system_prompt,
-        f"Source material:\n\n{document.extracted_text}",
+        source_material,
         response_mime_type="application/json",
         max_output_tokens=8000,
     )
@@ -154,6 +175,7 @@ def generate_pending_questions(
                 stem=raw_q["stem"],
                 difficulty=raw_q.get("difficulty", "medium"),
                 explanation=raw_q["explanation"],
+                source="past_questions" if document.document_type == "past_questions" else None,
             )
             pending.options = [
                 PendingOption(text=o["text"], is_correct=bool(o.get("is_correct"))) for o in options
@@ -214,6 +236,7 @@ def approve_pending_question(
         stem=pending.stem,
         difficulty=pending.difficulty,
         explanation=pending.explanation,
+        source=pending.source,
     )
     question.options = [Option(text=o.text, is_correct=o.is_correct) for o in pending.options]
     db.add(question)
@@ -251,6 +274,7 @@ def approve_all_pending_questions(
             stem=pending.stem,
             difficulty=pending.difficulty,
             explanation=pending.explanation,
+            source=pending.source,
         )
         question.options = [Option(text=o.text, is_correct=o.is_correct) for o in pending.options]
         db.add(question)

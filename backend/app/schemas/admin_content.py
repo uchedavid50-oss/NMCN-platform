@@ -16,11 +16,10 @@ class AdminDocumentOut(BaseModel):
 
 
 class GeneratePendingRequest(BaseModel):
-    document_id: uuid.UUID
+    document_id: Optional[uuid.UUID] = None
     topic_id: uuid.UUID
     count: int = Field(default=10, ge=1, le=30)
-
-
+    extraction_mode: str = Field(default="ai_generate")  # "ai_generate" | "verbatim"
 class PendingOptionOut(BaseModel):
     id: uuid.UUID
     text: str

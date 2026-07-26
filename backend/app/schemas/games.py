@@ -16,11 +16,11 @@ class SpeedRoundOption(BaseModel):
 class SpeedRoundQuestion(BaseModel):
     id: uuid.UUID
     stem: str
+    explanation: str
     options: List[SpeedRoundOption]
 
     class Config:
         from_attributes = True
-
 
 class SpeedRoundSubmitRequest(BaseModel):
     topic_id: Optional[uuid.UUID] = None

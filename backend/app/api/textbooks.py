@@ -193,6 +193,7 @@ def generate_questions_from_textbook(
                 stem=raw_q["stem"],
                 difficulty=raw_q.get("difficulty", "medium"),
                 explanation=raw_q["explanation"],
+                source="past_questions",
             )
             pending.options = [
                 PendingOption(text=o["text"], is_correct=bool(o.get("is_correct"))) for o in options

@@ -23,6 +23,7 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string; icon:
       { href: "/games/speed-round", label: "Speed round", icon: "⚡" },
       { href: "/cbt-exam", label: "CBT Center", icon: "🎓" },
       { href: "/clinical-cases", label: "Clinical Cases", icon: "🩺" },
+      { href: "/past-questions", label: "Past Questions", icon: "📜" },
     ],
   },
   {
@@ -33,7 +34,7 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string; icon:
       { href: "/mnemonics", label: "Mnemonics", icon: "💡" },
       { href: "/focus", label: "Focus Session", icon: "🧘" },
       { href: "/dictionary", label: "Nursing Dictionary", icon: "📖" },
-      { href: "/textbooks", label: "Textbook Library", icon: "🗂️" },
+      { href: "/textbooks", label: "Textbooks & Past Questions", icon: "🗂️" },
     ],
   },
   {

@@ -108,3 +108,29 @@ export function deleteTextbook(textbookId: string, token: string) {
 export function getTextbookDownloadUrl(textbookId: string) {
   return `${API_URL}/textbooks/${textbookId}/download`;
 }
+
+export async function downloadTextbook(textbookId: string, filename: string, token: string) {
+  const response = await fetch(`${API_URL}/textbooks/${textbookId}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, "Couldn't download this file.");
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+}
+
+export function generateQuestionsFromTextbook(
+  textbookId: string,
+  topicId: string,
+  count: number,
+  token: string
+) {
+  return request<{ id: string }[]>(
+    `/textbooks/${textbookId}/generate-questions`,
+    { method: "POST", body: JSON.stringify({ topic_id: topicId, count }) },
+    token
+  );
+}
