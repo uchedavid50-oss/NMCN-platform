@@ -373,7 +373,7 @@ export default function DashboardPage() {
         <section className="animate-fade-in-up delay-3 mt-10">
           <h2 className="font-display text-xl font-semibold text-ink-navy">Continue practicing</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {subjectProgress?.map(({ subject, totalTopics, attemptedTopics }) => (
+           {subjectProgress?.filter(({ attemptedTopics }) => attemptedTopics > 0).map(({ subject, totalTopics, attemptedTopics }) => (
               <SubjectCard
                 key={subject.id}
                 subject={subject}
@@ -381,8 +381,10 @@ export default function DashboardPage() {
                 attemptedTopics={attemptedTopics}
               />
             ))}
-            {subjectProgress && subjectProgress.length === 0 && (
-              <p className="text-graphite">No subjects available yet.</p>
+            {subjectProgress && subjectProgress.filter((s) => s.attemptedTopics > 0).length === 0 && (
+              <p className="text-graphite">
+                Nothing started yet — head to Subjects to pick something to practice.
+              </p>
             )}
             {!subjectProgress && <p className="text-graphite">Loading your subjects…</p>}
           </div>
