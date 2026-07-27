@@ -170,12 +170,12 @@ def generate_pending_questions(
             if len(options) < 2 or correct_count != 1:
                 continue
             pending = PendingQuestion(
-                source_document_id=document.id,
+                source_document_id=document.id if document else None,
                 topic_id=topic.id,
                 stem=raw_q["stem"],
                 difficulty=raw_q.get("difficulty", "medium"),
                 explanation=raw_q["explanation"],
-                source="past_questions" if document.document_type == "past_questions" else None,
+                source="past_questions" if document and document.document_type == "past_questions" else None,
             )
             pending.options = [
                 PendingOption(text=o["text"], is_correct=bool(o.get("is_correct"))) for o in options

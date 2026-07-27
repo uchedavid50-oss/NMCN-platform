@@ -146,11 +146,13 @@ async function generateForOneTopic(topicId: string, target: number, docId: strin
       if (result.length === 0) break;
     } catch (err) {
       consecutiveFailures += 1;
-      if (consecutiveFailures >= 2) break; // give up on this topic after 2 failed batches in a row
+      if (consecutiveFailures >= 2) break;
+      // wait before retrying, so a rate limit or hiccup doesn't turn into rapid-fire hammering
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
- return totalCreated;
-  }
+  return totalCreated;
+}
 
   async function handleBulkGenerate() {
     if (!token) return;
@@ -167,13 +169,14 @@ async function generateForOneTopic(topicId: string, target: number, docId: strin
         setBulkStatus(topics.find((t) => t.id === selectedTopicId)?.name || "");
         const created = await generateForOneTopic(selectedTopicId, bulkTarget, docId);
         setBulkProgress(created);
-      } else {
+       } else {
         let grandTotal = 0;
         for (const topic of topics) {
           setBulkStatus(topic.name);
           const created = await generateForOneTopic(topic.id, bulkTarget, docId);
           grandTotal += created;
           setBulkProgress(grandTotal);
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
       refreshAll();

@@ -21,7 +21,7 @@ def get_past_questions_count(db: Session = Depends(get_db)):
 
 @router.get("/practice", response_model=list[SpeedRoundQuestion])
 def start_past_questions_practice(
-    count: int = Query(default=20, ge=1, le=3000),
+    count: int = Query(default=20, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
