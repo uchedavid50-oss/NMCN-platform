@@ -35,14 +35,14 @@ export default function SubjectsPage() {
 
       {error && <p className="mt-6 text-pulse-coral">{error}</p>}
 
-      {subjects && subjects.length === 0 && (
+      {subjects && subjects.filter((s) => !s.name.startsWith("OSCE: ")).length === 0 && (
         <p className="mt-6 text-graphite">
           No subjects have been added yet — check back soon.
         </p>
       )}
 
       <div className="mt-8 flex flex-col gap-3">
-        {subjects?.map((subject) => (
+        {subjects?.filter((subject) => !subject.name.startsWith("OSCE: ")).map((subject) => (
           <Link
             key={subject.id}
             href={`/subjects/${subject.id}`}

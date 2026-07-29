@@ -365,6 +365,8 @@ export const api = {
 
   listAllTopics: () => request<Topic[]>("/topics"),
 
+  getTopic: (topicId: string) => request<Topic>(`/topics/${topicId}`),
+
   startPractice: (topicId: string, token: string) =>
     request<PracticeStartResponse>(
       "/practice/start",

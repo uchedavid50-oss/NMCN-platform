@@ -4,7 +4,7 @@ import json
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import require_admin
@@ -251,21 +251,30 @@ def approve_pending_question(
 @router.post("/pending/approve-all")
 def approve_all_pending_questions(
     topic_id: uuid.UUID | None = None,
+    limit: int = Query(default=200, ge=1, le=1000),
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    """Bulk-publishes every currently-pending question (optionally scoped to
-    one topic) straight into the official bank, skipping individual review.
-    A deliberate trade-off: faster at volume, but gives up the per-question
+    """Bulk-publishes pending questions (optionally scoped to one topic)
+    straight into the official bank, skipping individual review. A
+    deliberate trade-off: faster at volume, but gives up the per-question
     quality check the review queue exists for. Use when you've already
-    spot-checked enough batches to trust the pattern, not as a default."""
-    query = db.query(PendingQuestion).options(joinedload(PendingQuestion.options)).filter(
-        PendingQuestion.status == "pending"
-    )
-    if topic_id:
-        query = query.filter(PendingQuestion.topic_id == topic_id)
+    spot-checked enough batches to trust the pattern, not as a default.
 
-    pending_list = query.all()
+    Processes at most `limit` per call -- at 1000+ pending questions, doing
+    them all in one request/transaction was slow enough to look hung to the
+    caller. The frontend calls this repeatedly (like bulk-generate) until
+    remaining_count hits 0."""
+    base_query = db.query(PendingQuestion).filter(PendingQuestion.status == "pending")
+    if topic_id:
+        base_query = base_query.filter(PendingQuestion.topic_id == topic_id)
+
+    pending_list = (
+        base_query.options(joinedload(PendingQuestion.options))
+        .order_by(PendingQuestion.created_at)
+        .limit(limit)
+        .all()
+    )
     approved_count = 0
 
     for pending in pending_list:
@@ -283,7 +292,8 @@ def approve_all_pending_questions(
         approved_count += 1
 
     db.commit()
-    return {"approved_count": approved_count}
+    remaining_count = base_query.count()
+    return {"approved_count": approved_count, "remaining_count": remaining_count}
 
 
 @router.post("/pending/{pending_id}/reject", response_model=PendingQuestionOut)

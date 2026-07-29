@@ -12,6 +12,7 @@ from app.models.topic import Topic
 OSCE_SYLLABUS = {
     "OSCE: Personal Hygiene and Basic Care": [
         "Bed Bath (Complete and Partial)",
+        "Bed Making (Occupied and Unoccupied Bed)",
         "Oral Hygiene and Mouth Care",
         "Hair Care and Back Care",
         "Pressure Ulcer Prevention and Care",

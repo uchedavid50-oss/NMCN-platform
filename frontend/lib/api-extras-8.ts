@@ -6,6 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   const headers: Record<string, string> = {
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
@@ -22,12 +23,21 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   return response.json();
 }
 
-export function approveAllPending(token: string, topicId?: string, limit = 200) {
-  const params = new URLSearchParams({ limit: String(limit) });
-  if (topicId) params.set("topic_id", topicId);
-  return request<{ approved_count: number; remaining_count: number }>(
-    `/admin/content/pending/approve-all?${params.toString()}`,
-    { method: "POST" },
+export interface TopicVideo {
+  id: string;
+  topic_id: string;
+  youtube_url: string;
+  updated_at: string;
+}
+
+export function getTopicVideo(topicId: string, token: string) {
+  return request<TopicVideo>(`/topic-videos/${topicId}`, {}, token);
+}
+
+export function setTopicVideo(topicId: string, youtubeUrl: string, token: string) {
+  return request<TopicVideo>(
+    `/topic-videos/${topicId}`,
+    { method: "PUT", body: JSON.stringify({ youtube_url: youtubeUrl }) },
     token
   );
 }

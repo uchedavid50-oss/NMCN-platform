@@ -23,6 +23,7 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string; icon:
       { href: "/games/speed-round", label: "Speed round", icon: "⚡" },
       { href: "/cbt-exam", label: "CBT Center", icon: "🎓" },
       { href: "/clinical-cases", label: "Clinical Cases", icon: "🩺" },
+      { href: "/osce", label: "OSCE", icon: "🩹" },
       { href: "/past-questions", label: "Past Questions", icon: "📜" },
     ],
   },

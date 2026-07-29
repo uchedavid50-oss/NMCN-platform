@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { approveAllPending } from "@/lib/api-extras-5";
 import { generateTopicNote } from "@/lib/api-extras-7";
+import { getTopicVideo, setTopicVideo } from "@/lib/api-extras-8";
 
 export default function AdminContentPage() {
   const { user, token, loading } = useRequireAuth();
@@ -47,6 +48,11 @@ const [noteBulkProgress, setNoteBulkProgress] = useState(0);
 const [noteBulkStatus, setNoteBulkStatus] = useState("");
   const [bulkApproving, setBulkApproving] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const [approveProgress, setApproveProgress] = useState(0);
+  const [approveTotal, setApproveTotal] = useState(0);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoSaving, setVideoSaving] = useState(false);
+  const [videoMessage, setVideoMessage] = useState<string | null>(null);
 
   function refreshAll() {
     if (!token) return;
@@ -60,6 +66,16 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
     refreshAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);
+
+  useEffect(() => {
+    if (!token || !selectedTopicId) {
+      setVideoUrl("");
+      return;
+    }
+    getTopicVideo(selectedTopicId, token)
+      .then((v) => setVideoUrl(v.youtube_url))
+      .catch(() => setVideoUrl(""));
+  }, [token, selectedTopicId]);
 
   if (loading || !user) {
     return (
@@ -201,6 +217,21 @@ async function handleGenerateNote() {
     }
   }
 
+  async function handleSaveVideo() {
+    if (!token || !selectedTopicId || !videoUrl.trim()) return;
+    setVideoSaving(true);
+    setVideoMessage(null);
+    setError(null);
+    try {
+      await setTopicVideo(selectedTopicId, videoUrl.trim(), token);
+      setVideoMessage("Video saved.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save the video.");
+    } finally {
+      setVideoSaving(false);
+    }
+  }
+
   async function handleBulkGenerateNotes() {
   if (!token) return;
   setNoteBulkRunning(true);
@@ -248,22 +279,39 @@ async function handleGenerateNote() {
 
   async function handleApproveAll() {
     if (!token || pending.length === 0) return;
+    const total = pending.length;
     const confirmed = window.confirm(
-      `Approve all ${pending.length} pending question(s) without reviewing them individually? This publishes them straight to the official bank.`
+      `Approve all ${total} pending question(s) without reviewing them individually? This publishes them straight to the official bank.`
     );
     if (!confirmed) return;
 
     setBulkApproving(true);
+    setApproveProgress(0);
+    setApproveTotal(total);
     setBulkMessage(null);
     setError(null);
+
+    // Batched like bulk-generate: one huge request/transaction for 1000+
+    // pending questions was slow enough to look hung to the caller, with
+    // no feedback in the meantime. Chunking also means a failure partway
+    // through doesn't lose progress already committed.
+    let approvedSoFar = 0;
     try {
-      const result = await approveAllPending(token);
-      setBulkMessage(`Approved ${result.approved_count} question(s).`);
-      refreshAll();
+      let remaining = total;
+      while (remaining > 0) {
+        const result = await approveAllPending(token, undefined, 200);
+        approvedSoFar += result.approved_count;
+        remaining = result.remaining_count;
+        setApproveProgress(approvedSoFar);
+        if (result.approved_count === 0) break; // nothing left this call could approve; avoid spinning forever
+      }
+      setBulkMessage(`Approved ${approvedSoFar} question(s).`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Bulk approve failed.");
+      setBulkMessage(approvedSoFar > 0 ? `Approved ${approvedSoFar} question(s) before the error.` : null);
     } finally {
       setBulkApproving(false);
+      refreshAll();
     }
   }
 
@@ -478,6 +526,34 @@ async function handleGenerateNote() {
           </button>
         </div>
       </section>
+      {/* OSCE demonstration video */}
+      <section className="mt-6 rounded-md border border-mist bg-card-bg p-5">
+        <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
+          OSCE demonstration video (per topic)
+        </p>
+        <p className="mt-1 text-sm text-graphite">
+          Select a topic above, paste a YouTube URL, and save. Shown to students on that
+          procedure&apos;s OSCE page before the practice questions.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            disabled={!selectedTopicId}
+            className="min-w-[20rem] flex-1 rounded-md border border-mist px-3 py-2 text-sm disabled:opacity-50"
+          />
+          <button
+            onClick={handleSaveVideo}
+            disabled={videoSaving || !selectedTopicId || !videoUrl.trim()}
+            className="rounded-md bg-vital-teal px-5 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+          >
+            {videoSaving ? "Saving…" : "Save video"}
+          </button>
+        </div>
+        {videoMessage && <p className="mt-2 text-sm text-vital-teal">{videoMessage}</p>}
+      </section>
       {/* Pending review queue */}
       <section className="mt-6">
         <div className="flex items-center justify-between">
@@ -490,7 +566,7 @@ async function handleGenerateNote() {
               disabled={bulkApproving}
               className="rounded-md bg-vital-teal px-4 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
             >
-              {bulkApproving ? "Approving…" : `✅ Approve all ${pending.length}`}
+              {bulkApproving ? `Approving… (${approveProgress}/${approveTotal})` : `✅ Approve all ${pending.length}`}
             </button>
           )}
         </div>
