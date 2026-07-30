@@ -22,7 +22,7 @@ def generate_certificate_pdf(student_email: str, average_score: float, mock_coun
 
     c.setFont("Helvetica-Bold", 14)
     c.setFillColor(VITAL_TEAL)
-    c.drawCentredString(width / 2, height - 90, "NMCN CBT PREP")
+    c.drawCentredString(width / 2, height - 90, "CURA")
 
     c.setFont("Helvetica-Bold", 32)
     c.setFillColor(INK_NAVY)

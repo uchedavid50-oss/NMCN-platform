@@ -6,7 +6,7 @@ def generate_totp_secret() -> str:
 
 
 def get_provisioning_uri(secret: str, email: str) -> str:
-    return pyotp.totp.TOTP(secret).provisioning_uri(name=email, issuer_name="NMCN CBT Prep")
+    return pyotp.totp.TOTP(secret).provisioning_uri(name=email, issuer_name="Cura")
 
 
 def verify_totp_code(secret: str, code: str) -> bool:

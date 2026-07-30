@@ -274,7 +274,7 @@ export default function DashboardPage() {
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <p className="px-2 font-display text-lg font-semibold text-ink-navy">NMCN CBT Prep</p>
+        <p className="px-2 font-display text-lg font-semibold text-ink-navy">Cura</p>
         <nav className="mt-8 flex flex-col gap-6">
           <Link
             href="/dashboard"

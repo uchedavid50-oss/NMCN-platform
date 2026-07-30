@@ -1,6 +1,6 @@
 {
-  "name": "NMCN CBT Prep",
-  "short_name": "NMCN Prep",
+  "name": "Cura",
+  "short_name": "Cura",
   "description": "Exam-readiness practice for the NMCN Professional Qualifying Examination.",
   "start_url": "/dashboard",
   "display": "standalone",

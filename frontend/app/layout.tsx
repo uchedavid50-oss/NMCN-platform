@@ -21,7 +21,7 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 export const metadata: Metadata = {
-  title: "NMCN CBT Prep",
+  title: "Cura",
   description: "Exam-readiness practice for the NMCN Professional Qualifying Examination.",
   manifest: "/manifest.json",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
