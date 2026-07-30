@@ -3,12 +3,9 @@
 import { useEffect, useRef, type MouseEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import { motion, useMotionValue, useMotionTemplate, useSpring } from "framer-motion";
 import gsap from "gsap";
 import { Mascot } from "@/components/Mascot";
-
-const HeroCanvas = dynamic(() => import("@/components/HeroCanvas"), { ssr: false });
 
 const MotionLink = motion.create(Link);
 
@@ -48,7 +45,6 @@ export function HeroSection() {
       className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center gap-10 overflow-hidden px-6 py-16 lg:flex-row"
     >
       <div className="ambient-glow" />
-      <HeroCanvas />
       <motion.div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-[5]" style={{ background: spotlightBackground }} />
 
       <div className="flex-1">
