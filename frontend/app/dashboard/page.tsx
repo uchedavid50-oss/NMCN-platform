@@ -142,6 +142,15 @@ function ProfileMenu({ isAdmin }: { isAdmin: boolean }) {
                   ⚙️ Admin: Content
                 </Link>
               )}
+              {isAdmin && (
+                <Link
+                  href="/admin/activity"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-2 text-left text-sm text-pulse-coral transition-colors hover:bg-pulse-coral/10"
+                >
+                  📊 Admin: Signups &amp; Payments
+                </Link>
+              )}
               <button
                 onClick={logout}
                 className="rounded-md px-3 py-2 text-left text-sm text-graphite transition-colors hover:bg-mist/40"

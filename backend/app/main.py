@@ -24,6 +24,7 @@ from app.api.equipment import router as equipment_router
 from app.api.organs import router as organs_router
 from app.api.entrance_exam import router as entrance_exam_router
 from app.api.public_stats import router as public_stats_router
+from app.api.admin_dashboard import router as admin_dashboard_router
 from app.api.cgpa import router as cgpa_router
 from app.api.mnemonics import router as mnemonics_router
 from app.api.focus import router as focus_router
@@ -91,6 +92,7 @@ app.include_router(equipment_router)
 app.include_router(organs_router)
 app.include_router(entrance_exam_router)
 app.include_router(public_stats_router)
+app.include_router(admin_dashboard_router)
 app.include_router(cgpa_router)
 app.include_router(mnemonics_router)
 app.include_router(focus_router)
