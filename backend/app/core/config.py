@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     # Base URL used to build password-reset links, e.g. "https://nmcn-platform-production.up.railway.app"
     frontend_url: str = "http://localhost:3000"
+    # Where to send "new signup" / "new payment" notifications. Optional --
+    # left blank, those notifications are silently skipped (see email.py).
+    admin_notification_email: str = ""
 
     # Entrance-exam AI provider fallback chain (backend/app/services/ai_router.py).
     # All optional -- a provider with no key configured is skipped instantly.

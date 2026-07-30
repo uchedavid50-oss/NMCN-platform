@@ -22,7 +22,7 @@ from app.schemas.auth import (
     UserOut,
     UserSignup,
 )
-from app.services.email import send_password_reset_email
+from app.services.email import send_admin_signup_notification, send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -40,6 +40,13 @@ def signup(payload: UserSignup, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    try:
+        send_admin_signup_notification(user.email)
+    except Exception as exc:
+        # Never let a notification-email failure block signup itself.
+        print(f"[signup] Failed to send admin notification for {user.email}: {exc}")
+
     return user
 
 

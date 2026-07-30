@@ -18,6 +18,7 @@ from app.schemas.payment import (
     InitializePaymentResponse,
     SubscriptionStatusOut,
 )
+from app.services.email import send_admin_payment_notification
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -133,6 +134,14 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
                 user.subscription_status = "active"
 
             db.commit()
+
+            if user:
+                try:
+                    send_admin_payment_notification(user.email, subscription.amount_kobo, subscription.plan)
+                except Exception as exc:
+                    # Never let a notification-email failure block webhook
+                    # processing -- Paystack retries webhooks that don't 200.
+                    print(f"[payments webhook] Failed to send admin notification for {user.email}: {exc}")
 
     return {"received": True}
 
