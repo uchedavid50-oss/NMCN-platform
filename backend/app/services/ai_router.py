@@ -85,14 +85,22 @@ def _openai_compatible(url: str, api_key_attr: str, model: str) -> ProviderCall:
 
 
 def _cohere_call(system_prompt: str, user_message: str, response_mime_type: Optional[str] = None) -> str:
+    # Cohere retired the v1 Chat API (POST /v1/chat, message+preamble body) --
+    # this uses the current v2 shape (POST /v2/chat, a messages array).
     response = httpx.post(
-        "https://api.cohere.com/v1/chat",
+        "https://api.cohere.com/v2/chat",
         headers={"Authorization": f"Bearer {settings.cohere_api_key}", "Content-Type": "application/json"},
-        json={"model": "command-r", "preamble": system_prompt, "message": user_message},
+        json={
+            "model": "command-r",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+        },
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
-    return response.json()["text"]
+    return response.json()["message"]["content"][0]["text"]
 
 
 def _cloudflare_call(system_prompt: str, user_message: str, response_mime_type: Optional[str] = None) -> str:
@@ -153,18 +161,26 @@ def _build_providers() -> list[Provider]:
         Provider(
             "Groq",
             lambda: bool(settings.groq_api_key),
-            _openai_compatible("https://api.groq.com/openai/v1/chat/completions", "groq_api_key", "llama3-8b-8192"),
+            # llama3-8b-8192 was decommissioned by Groq; llama-3.1-8b-instant
+            # is the current small/fast production model.
+            _openai_compatible(
+                "https://api.groq.com/openai/v1/chat/completions", "groq_api_key", "llama-3.1-8b-instant"
+            ),
         ),
         Provider(
             "Cerebras",
             lambda: bool(settings.cerebras_api_key),
-            _openai_compatible("https://api.cerebras.ai/v1/chat/completions", "cerebras_api_key", "llama3.1-8b"),
+            # Cerebras no longer offers a small Llama model on this endpoint;
+            # gpt-oss-120b is their current production model.
+            _openai_compatible("https://api.cerebras.ai/v1/chat/completions", "cerebras_api_key", "gpt-oss-120b"),
         ),
         Provider(
             "SambaNova",
             lambda: bool(settings.sambanova_api_key),
+            # SambaNova's smallest current Llama offering is the 3.3 70B model
+            # -- no 8B model remains in their catalog.
             _openai_compatible(
-                "https://api.sambanova.ai/v1/chat/completions", "sambanova_api_key", "Meta-Llama-3-8B-Instruct"
+                "https://api.sambanova.ai/v1/chat/completions", "sambanova_api_key", "Meta-Llama-3.3-70B-Instruct"
             ),
         ),
         Provider(
@@ -177,10 +193,14 @@ def _build_providers() -> list[Provider]:
         Provider(
             "Fireworks AI",
             lambda: bool(settings.fireworks_api_key),
+            # llama-v3-8b-instruct 404s (model path retired); Fireworks' own
+            # naming convention has since moved to "v3p1" for 3.1 models.
+            # Lower confidence than the other fixes here -- verify against
+            # https://fireworks.ai/models if this still fails.
             _openai_compatible(
                 "https://api.fireworks.ai/inference/v1/chat/completions",
                 "fireworks_api_key",
-                "accounts/fireworks/models/llama-v3-8b-instruct",
+                "accounts/fireworks/models/llama-v3p1-8b-instruct",
             ),
         ),
         Provider(
@@ -212,10 +232,15 @@ def _build_providers() -> list[Provider]:
         Provider(
             "OpenRouter",
             lambda: bool(settings.openrouter_api_key),
+            # That Llama model is no longer on OpenRouter's free tier --
+            # nemotron-nano-9b-v2:free is confirmed currently free via
+            # GET https://openrouter.ai/api/v1/models (OpenRouter's free
+            # lineup changes over time; re-check that endpoint if this
+            # 404s again).
             _openai_compatible(
                 "https://openrouter.ai/api/v1/chat/completions",
                 "openrouter_api_key",
-                "meta-llama/llama-3-8b-instruct:free",
+                "nvidia/nemotron-nano-9b-v2:free",
             ),
         ),
         Provider("Gemini", lambda: bool(settings.google_api_key), _gemini_call),
