@@ -41,6 +41,7 @@ export interface EntranceExamQuestion {
   question_text: string;
   model_answer: string;
   explanation: string;
+  provider: string | null;
   created_at: string;
 }
 
@@ -52,8 +53,23 @@ export function getEntranceExamQuestions(subject: string, count: number, token: 
   );
 }
 
+export interface ProviderRunResult {
+  provider: string;
+  status: "success" | "failed" | "skipped_no_key" | "skipped_daily_limit";
+  questions_generated: number;
+  elapsed_seconds: number;
+  error: string | null;
+}
+
+export interface GenerateBatchResult {
+  results: ProviderRunResult[];
+  saved_questions: EntranceExamQuestion[];
+  total_saved: number;
+  total_generated_before_dedup: number;
+}
+
 export function generateEntranceExamQuestions(subject: string, token: string) {
-  return request<EntranceExamQuestion[]>(
+  return request<GenerateBatchResult>(
     "/entrance-exam/generate",
     { method: "POST", body: JSON.stringify({ subject }) },
     token
@@ -62,4 +78,22 @@ export function generateEntranceExamQuestions(subject: string, token: string) {
 
 export function deleteEntranceExamQuestion(questionId: string, token: string) {
   return request<void>(`/entrance-exam/questions/${questionId}`, { method: "DELETE" }, token);
+}
+
+export interface ProviderStatusEntry {
+  name: string;
+  configured: boolean;
+  status: "healthy" | "failing" | "unknown";
+  last_attempt_at: string | null;
+  last_error: string | null;
+}
+
+export interface ProviderStatus {
+  providers: ProviderStatusEntry[];
+  last_used: { provider: string; at: string } | null;
+  question_counts: { subject: string; count: number }[];
+}
+
+export function getProviderStatus(token: string) {
+  return request<ProviderStatus>("/entrance-exam/admin/provider-status", {}, token);
 }

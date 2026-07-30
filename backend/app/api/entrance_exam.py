@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import timedelta
 
@@ -7,21 +8,33 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin, get_current_user
-from app.api.tutor import _call_gemini
-from app.core.config import settings
 from app.core.time import utcnow
 from app.db.session import get_db
+from app.models.ai_provider_attempt import AIProviderAttempt
 from app.models.entrance_exam_generation_request import EntranceExamGenerationRequest
 from app.models.entrance_exam_question import EntranceExamQuestion
 from app.models.user import User
-from app.schemas.entrance_exam import EntranceExamQuestionOut, GenerateEntranceExamRequest
+from app.schemas.entrance_exam import (
+    ENTRANCE_EXAM_SUBJECTS,
+    EntranceExamQuestionOut,
+    GenerateBatchResult,
+    GenerateEntranceExamRequest,
+    ProviderStatusOut,
+)
+from app.services.ai_router import PROVIDERS, FALLBACK_MESSAGE, call_ai_router_parallel
+
+
+def _normalize_question_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower()).rstrip(".!?")
 
 router = APIRouter(prefix="/entrance-exam", tags=["entrance-exam"])
 
 # Separate budget from the tutor's DAILY_TUTOR_LIMIT (see tutor.py) so
 # generating entrance-exam questions doesn't compete with a student's
-# tutor-chat quota. Each generation call produces ~8-10 questions, so 5
-# calls/day is a generous ceiling for one student.
+# tutor-chat quota. Each generation call fans out to every eligible
+# provider in parallel (up to 20 questions each, deduped before saving),
+# so 5 calls/day is a generous ceiling on top of ai_router's own
+# per-provider daily caps.
 DAILY_ENTRANCE_GEN_LIMIT = 5
 
 
@@ -38,11 +51,9 @@ def _entrance_gen_requests_today(db: Session, user_id) -> int:
 
 
 def _check_entrance_exam_available(db: Session, user_id) -> None:
-    if not settings.google_api_key:
-        raise HTTPException(
-            status_code=500,
-            detail="GOOGLE_API_KEY is not configured on the server.",
-        )
+    """Only a rate-limit gate now -- whether generation can actually
+    succeed is up to call_ai_router_parallel and the caller's own
+    all-failed/all-skipped handling below."""
     if _entrance_gen_requests_today(db, user_id) >= DAILY_ENTRANCE_GEN_LIMIT:
         raise HTTPException(
             status_code=429,
@@ -76,17 +87,21 @@ def list_entrance_exam_questions(
     return questions
 
 
-@router.post("/generate", response_model=list[EntranceExamQuestionOut])
+@router.post("/generate", response_model=GenerateBatchResult)
 def generate_entrance_exam_questions(
     payload: GenerateEntranceExamRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    admin: User = Depends(require_admin),
 ):
-    """Both students (via the "Generate More Questions" button) and admins
-    can call this -- gated by the same per-user rolling-24h limit either
-    way, consistent with how admin content generation elsewhere in the app
-    also goes through its own usage gate rather than being exempt."""
-    _check_entrance_exam_available(db, current_user.id)
+    """Admin-only -- students only ever see questions already stored in
+    the database (see /entrance-exam/questions), never trigger an AI call
+    themselves. Fans out to every eligible provider in parallel (see
+    call_ai_router_parallel) instead of trying one at a time; each
+    provider that succeeds contributes up to 20 questions, deduped by
+    normalized text across all providers before saving. Still gated by
+    the same per-admin rolling-24h limit as an outer ceiling on how often
+    a bulk run can be triggered at all."""
+    _check_entrance_exam_available(db, admin.id)
 
     system_prompt = (
         f"You write past-question-bank style practice questions for the {payload.subject} "
@@ -102,45 +117,129 @@ def generate_entrance_exam_questions(
         '"question_text": "...", "model_answer": "...", "explanation": "..."}]}\n\n'
         "model_answer should be the concise correct answer (or, for theory questions, a model "
         "answer covering the key points expected). explanation should briefly explain why, in a "
-        "sentence or two. Generate 8 to 10 questions."
+        "sentence or two. Generate 20 questions."
     )
 
-    reply_text = _call_gemini(
-        system_prompt,
-        f"Subject: {payload.subject}",
-        response_mime_type="application/json",
-        max_output_tokens=4000,
+    provider_results = call_ai_router_parallel(
+        db, system_prompt, f"Subject: {payload.subject}", response_mime_type="application/json"
     )
 
-    try:
-        parsed, _ = json.JSONDecoder().raw_decode((reply_text or "{}").strip())
-        raw_questions = parsed if isinstance(parsed, list) else parsed["questions"]
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(status_code=502, detail=f"The AI didn't return usable questions - try again. ({exc})")
+    results_out = []
+    all_valid_questions = []  # list of (provider_name, raw_question_dict), pre-dedup
+    any_provider_returned_text = False
 
-    created = []
-    for raw_q in raw_questions:
-        try:
-            question = EntranceExamQuestion(
+    for result in provider_results:
+        raw_count = 0
+        if result.status == "success":
+            any_provider_returned_text = True
+            try:
+                parsed, _ = json.JSONDecoder().raw_decode((result.raw_text or "{}").strip())
+                raw_questions = parsed if isinstance(parsed, list) else parsed["questions"]
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                raw_questions = []
+
+            for raw_q in raw_questions:
+                if (
+                    isinstance(raw_q, dict)
+                    and raw_q.get("question_text")
+                    and raw_q.get("model_answer")
+                    and raw_q.get("explanation")
+                ):
+                    all_valid_questions.append((result.provider, raw_q))
+                    raw_count += 1
+
+        results_out.append(
+            {
+                "provider": result.provider,
+                "status": result.status,
+                "questions_generated": raw_count,
+                "elapsed_seconds": round(result.elapsed_seconds, 2),
+                "error": result.error,
+            }
+        )
+
+    seen_normalized: set[str] = set()
+    to_save = []
+    for provider_name, raw_q in all_valid_questions:
+        normalized = _normalize_question_text(raw_q["question_text"])
+        if normalized in seen_normalized:
+            continue
+        seen_normalized.add(normalized)
+        to_save.append(
+            EntranceExamQuestion(
                 subject=payload.subject,
                 question_type=raw_q.get("question_type", "short_answer"),
                 question_text=raw_q["question_text"],
                 model_answer=raw_q["model_answer"],
                 explanation=raw_q["explanation"],
+                provider=provider_name,
             )
-            db.add(question)
-            created.append(question)
-        except (KeyError, TypeError):
-            continue
+        )
 
-    if not created:
-        raise HTTPException(status_code=502, detail="No well-formed questions were generated - try again.")
+    if not to_save:
+        if any_provider_returned_text:
+            raise HTTPException(status_code=502, detail="No well-formed questions were generated - try again.")
+        raise HTTPException(status_code=502, detail=FALLBACK_MESSAGE)
 
-    db.add(EntranceExamGenerationRequest(user_id=current_user.id))
+    for question in to_save:
+        db.add(question)
+    db.add(EntranceExamGenerationRequest(user_id=admin.id))
     db.commit()
-    for q in created:
+    for q in to_save:
         db.refresh(q)
-    return created
+
+    return {
+        "results": results_out,
+        "saved_questions": to_save,
+        "total_saved": len(to_save),
+        "total_generated_before_dedup": len(all_valid_questions),
+    }
+
+
+@router.get("/admin/provider-status", response_model=ProviderStatusOut)
+def get_provider_status(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    providers = []
+    for provider in PROVIDERS:
+        last_attempt = (
+            db.query(AIProviderAttempt)
+            .filter(AIProviderAttempt.provider == provider.name)
+            .order_by(AIProviderAttempt.created_at.desc())
+            .first()
+        )
+        if last_attempt is None:
+            status = "unknown"
+        else:
+            status = "healthy" if last_attempt.success else "failing"
+        providers.append(
+            {
+                "name": provider.name,
+                "configured": provider.is_configured(),
+                "status": status,
+                "last_attempt_at": last_attempt.created_at if last_attempt else None,
+                "last_error": last_attempt.error if last_attempt and not last_attempt.success else None,
+            }
+        )
+
+    last_success = (
+        db.query(AIProviderAttempt)
+        .filter(AIProviderAttempt.success.is_(True))
+        .order_by(AIProviderAttempt.created_at.desc())
+        .first()
+    )
+    last_used = {"provider": last_success.provider, "at": last_success.created_at} if last_success else None
+
+    question_counts = [
+        {
+            "subject": subject,
+            "count": db.query(EntranceExamQuestion).filter(EntranceExamQuestion.subject == subject).count(),
+        }
+        for subject in ENTRANCE_EXAM_SUBJECTS
+    ]
+
+    return {"providers": providers, "last_used": last_used, "question_counts": question_counts}
 
 
 @router.delete("/questions/{question_id}", status_code=204)

@@ -3,6 +3,8 @@ import { Inter, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { ToastProvider } from "@/lib/toast-context";
+import { PageTransition } from "@/components/motion/PageTransition";
 const heading = Inter({
   subsets: ["latin"],
   variable: "--font-fraunces",
@@ -34,7 +36,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${heading.variable} ${plexSans.variable} ${plexMono.variable}`}>
       <body className="font-body min-h-screen bg-chart-cream text-graphite">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <PageTransition>{children}</PageTransition>
+            </ToastProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

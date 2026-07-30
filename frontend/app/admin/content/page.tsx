@@ -28,7 +28,10 @@ import {
   getEntranceExamQuestions,
   generateEntranceExamQuestions,
   deleteEntranceExamQuestion,
+  getProviderStatus,
   EntranceExamQuestion,
+  ProviderStatus,
+  GenerateBatchResult,
 } from "@/lib/api-extras-10";
 
 export default function AdminContentPage() {
@@ -88,6 +91,8 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
   const [entranceQuestions, setEntranceQuestions] = useState<EntranceExamQuestion[]>([]);
   const [entranceGenerating, setEntranceGenerating] = useState(false);
   const [entranceMessage, setEntranceMessage] = useState<string | null>(null);
+  const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
+  const [lastRunResults, setLastRunResults] = useState<GenerateBatchResult | null>(null);
 
   function refreshAll() {
     if (!token) return;
@@ -140,6 +145,16 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
       .then(setEntranceQuestions)
       .catch(() => setEntranceQuestions([]));
   }, [token, entranceSubject]);
+
+  function refreshProviderStatus() {
+    if (!token) return;
+    getProviderStatus(token).then(setProviderStatus).catch(() => {});
+  }
+
+  useEffect(() => {
+    refreshProviderStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   if (loading || !user) {
     return (
@@ -347,15 +362,20 @@ async function handleGenerateNote() {
     if (!token) return;
     setEntranceGenerating(true);
     setEntranceMessage(null);
+    setLastRunResults(null);
     setError(null);
     try {
-      const created = await generateEntranceExamQuestions(entranceSubject, token);
-      setEntranceQuestions((prev) => [...created, ...prev]);
-      setEntranceMessage(`Generated ${created.length} question(s).`);
+      const batch = await generateEntranceExamQuestions(entranceSubject, token);
+      setEntranceQuestions((prev) => [...batch.saved_questions, ...prev]);
+      setLastRunResults(batch);
+      setEntranceMessage(
+        `Saved ${batch.total_saved} question(s) (${batch.total_generated_before_dedup} generated before dedup).`
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't generate questions.");
     } finally {
       setEntranceGenerating(false);
+      refreshProviderStatus();
     }
   }
 
@@ -791,6 +811,44 @@ async function handleGenerateNote() {
         <p className="mt-1 text-sm text-graphite">
           Generate and manage short-answer / fill-in-blank / theory questions per subject.
         </p>
+
+        {providerStatus && (
+          <div className="mt-4 rounded-md border border-mist bg-chart-cream/40 p-4">
+            <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
+              AI provider status
+            </p>
+            <p className="mt-1 text-sm text-graphite">
+              {providerStatus.last_used
+                ? `Last used: ${providerStatus.last_used.provider} (${new Date(
+                    providerStatus.last_used.at
+                  ).toLocaleString()})`
+                : "No successful generation yet."}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+              {providerStatus.providers.map((p) => (
+                <div key={p.name} className="flex items-center gap-2 text-xs" title={p.last_error || undefined}>
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      p.status === "healthy"
+                        ? "bg-vital-teal"
+                        : p.status === "failing"
+                        ? "bg-pulse-coral"
+                        : "bg-graphite/30"
+                    }`}
+                  />
+                  <span className={p.configured ? "text-ink-navy" : "text-graphite/60"}>{p.name}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 font-mono text-xs uppercase tracking-widest text-vital-teal">
+              Questions stored per subject
+            </p>
+            <p className="mt-1 text-sm text-graphite">
+              {providerStatus.question_counts.map((c) => `${c.subject}: ${c.count}`).join(" · ")}
+            </p>
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <select
             value={entranceSubject}
@@ -813,6 +871,47 @@ async function handleGenerateNote() {
         </div>
         {entranceMessage && <p className="mt-2 text-sm text-vital-teal">{entranceMessage}</p>}
 
+        {lastRunResults && (
+          <div className="mt-4 overflow-x-auto rounded-md border border-mist">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-mist bg-chart-cream/60 text-xs uppercase tracking-widest text-graphite">
+                  <th className="px-3 py-2 font-mono">Provider</th>
+                  <th className="px-3 py-2 font-mono">Status</th>
+                  <th className="px-3 py-2 font-mono">Questions Generated</th>
+                  <th className="px-3 py-2 font-mono">Time Taken</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lastRunResults.results.map((r) => {
+                  const statusLabel =
+                    r.status === "success"
+                      ? "Success"
+                      : r.status === "failed"
+                      ? "Failed"
+                      : r.status === "skipped_daily_limit"
+                      ? "Skipped (daily limit)"
+                      : "Skipped (no key)";
+                  const statusColor =
+                    r.status === "success"
+                      ? "text-vital-teal"
+                      : r.status === "failed"
+                      ? "text-pulse-coral"
+                      : "text-graphite/60";
+                  return (
+                    <tr key={r.provider} className="border-b border-mist last:border-0" title={r.error || undefined}>
+                      <td className="px-3 py-2 text-ink-navy">{r.provider}</td>
+                      <td className={`px-3 py-2 font-medium ${statusColor}`}>{statusLabel}</td>
+                      <td className="px-3 py-2 text-graphite">{r.questions_generated}</td>
+                      <td className="px-3 py-2 text-graphite">{r.elapsed_seconds.toFixed(1)}s</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="mt-4 flex flex-col gap-2">
           {entranceQuestions.length === 0 && (
             <p className="text-sm text-graphite">No {entranceSubject} questions yet.</p>
@@ -825,6 +924,7 @@ async function handleGenerateNote() {
               <div>
                 <p className="font-mono text-xs uppercase tracking-widest text-graphite">
                   {q.question_type.replace("_", " ")}
+                  {q.provider && <span className="ml-2 normal-case text-vital-teal">via {q.provider}</span>}
                 </p>
                 <p className="mt-1 text-sm text-ink-navy">{q.question_text}</p>
               </div>

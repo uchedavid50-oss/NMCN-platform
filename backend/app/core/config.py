@@ -19,6 +19,23 @@ class Settings(BaseSettings):
     # Base URL used to build password-reset links, e.g. "https://nmcn-platform-production.up.railway.app"
     frontend_url: str = "http://localhost:3000"
 
+    # Entrance-exam AI provider fallback chain (backend/app/services/ai_router.py).
+    # All optional -- a provider with no key configured is skipped instantly.
+    groq_api_key: str = ""
+    cerebras_api_key: str = ""
+    sambanova_api_key: str = ""
+    together_api_key: str = ""
+    fireworks_api_key: str = ""
+    mistral_api_key: str = ""
+    cohere_api_key: str = ""
+    deepinfra_api_key: str = ""
+    cf_api_key: str = ""
+    cf_account_id: str = ""
+    deepseek_api_key: str = ""
+    hf_api_key: str = ""
+    openrouter_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
+
     class Config:
         env_file = ".env"
 

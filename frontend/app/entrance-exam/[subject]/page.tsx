@@ -4,12 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useRequireAuth } from "@/lib/use-require-auth";
-import { ApiError } from "@/lib/api";
-import {
-  getEntranceExamQuestions,
-  generateEntranceExamQuestions,
-  EntranceExamQuestion,
-} from "@/lib/api-extras-10";
+import { getEntranceExamQuestions, EntranceExamQuestion } from "@/lib/api-extras-10";
 
 export default function EntranceExamSubjectPage() {
   const { subject: rawSubject } = useParams<{ subject: string }>();
@@ -20,8 +15,6 @@ export default function EntranceExamSubjectPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [attemptText, setAttemptText] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!user || !token) return;
@@ -29,20 +22,6 @@ export default function EntranceExamSubjectPage() {
       .then(setQuestions)
       .catch(() => setQuestions([]));
   }, [user, token, subject]);
-
-  async function handleGenerateMore() {
-    if (!token) return;
-    setGenerating(true);
-    setError(null);
-    try {
-      const newQuestions = await generateEntranceExamQuestions(subject, token);
-      setQuestions((prev) => [...(prev || []), ...newQuestions]);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't generate more questions.");
-    } finally {
-      setGenerating(false);
-    }
-  }
 
   function goTo(index: number) {
     setCurrentIndex(index);
@@ -67,18 +46,9 @@ export default function EntranceExamSubjectPage() {
       </p>
       <h1 className="mt-1 font-display text-3xl font-semibold text-ink-navy">{subject}</h1>
 
-      {error && <p className="mt-6 text-pulse-coral">{error}</p>}
-
       {questions && questions.length === 0 && (
         <div className="mt-8 rounded-md border border-mist bg-card-bg p-6 text-center">
-          <p className="text-graphite">No {subject} questions yet.</p>
-          <button
-            onClick={handleGenerateMore}
-            disabled={generating}
-            className="mt-4 rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
-          >
-            {generating ? "Generating…" : "Generate Questions"}
-          </button>
+          <p className="text-graphite">Questions for this subject are being prepared. Check back soon!</p>
         </div>
       )}
 
@@ -139,13 +109,6 @@ export default function EntranceExamSubjectPage() {
               className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal disabled:opacity-50"
             >
               Next →
-            </button>
-            <button
-              onClick={handleGenerateMore}
-              disabled={generating}
-              className="rounded-md border border-vital-teal px-4 py-2 text-sm font-medium text-vital-teal transition hover:bg-vital-teal/10 disabled:opacity-50"
-            >
-              {generating ? "Generating…" : "Generate More Questions"}
             </button>
           </div>
         </>

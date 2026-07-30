@@ -21,4 +21,5 @@ class EntranceExamQuestion(Base):
     question_text = Column(Text, nullable=False)
     model_answer = Column(Text, nullable=False)
     explanation = Column(Text, nullable=False)
+    provider = Column(String, nullable=True)  # which AI provider generated this; NULL for pre-router rows
     created_at = Column(DateTime, default=utcnow)

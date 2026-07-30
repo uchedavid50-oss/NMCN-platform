@@ -1,39 +1,22 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Mascot } from "@/components/Mascot";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { StatCounter } from "@/components/landing/StatCounter";
+import { FeatureGrid } from "@/components/landing/FeatureGrid";
+import { FadeInSection } from "@/components/landing/FadeInSection";
+import { InfiniteMovingCards, MovingCardItem } from "@/components/landing/InfiniteMovingCards";
 
-const FEATURES = [
-  {
-    icon: "🎓",
-    title: "Full CBT Exam Simulation",
-    description: "A real, timed, mixed-subject exam — the closest thing to the real NMCN exam day.",
-  },
-  {
-    icon: "🩺",
-    title: "Clinical Case Simulator",
-    description: "Work through realistic patient scenarios, decision by decision, with instant feedback.",
-  },
-  {
-    icon: "🤖",
-    title: "AI Tutor",
-    description: "Get answers explained in plain language, and a personalized study plan for weak topics.",
-  },
-  {
-    icon: "📝",
-    title: "Your Notes → Questions",
-    description: "Upload your own study notes and get private practice questions generated from them.",
-  },
-  {
-    icon: "🔥",
-    title: "Streaks & Speed Rounds",
-    description: "Build a daily practice habit with quick arcade-style rounds and a running streak.",
-  },
-  {
-    icon: "📚",
-    title: "Textbook Library & Dictionary",
-    description: "Browse reference textbooks and look up nursing terms instantly.",
-  },
+// Not testimonials attributed to invented people -- honest feature
+// highlights cycled through the same moving-cards mechanism until real
+// student reviews exist (see the intro copy in the Reviews section below).
+const HIGHLIGHT_CARDS: MovingCardItem[] = [
+  { text: "Timed mock exams that mirror the real NMCN CBT format." },
+  { text: "An AI tutor on call whenever you're stuck on a concept." },
+  { text: "Practice questions across every subject in the curriculum." },
+  { text: "See exactly which topics still need work, backed by your own attempt history." },
+  { text: "Upload your own notes and get private practice questions generated from them." },
+  { text: "Free to start — no credit card required." },
 ];
 
 export default function Home() {
@@ -43,56 +26,11 @@ export default function Home() {
         <ThemeToggle />
       </div>
 
-      {/* Hero */}
-      <section className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center gap-10 overflow-hidden px-6 py-16 lg:flex-row">
-        <div className="ambient-glow" />
-        <div className="animate-fade-in-up flex-1">
-          <div className="flex items-center gap-3">
-            <Mascot className="h-14 w-14 shrink-0" />
-            <p className="font-mono text-sm uppercase tracking-widest text-vital-teal">
-              NMCN Professional Qualifying Examination
-            </p>
-          </div>
-          <h1 className="mt-4 font-display text-4xl font-semibold leading-tight text-ink-navy sm:text-5xl">
-            Know you&apos;re ready, before exam day does.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg text-graphite">
-            Practice questions, timed mock exams, AI-powered tutoring, and a clear read on
-            exactly which topics still need work — built for Nigerian nursing students preparing
-            for the NMCN licensing exam.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              href="/signup"
-              className="rounded-md bg-vital-teal px-6 py-3 font-body font-medium text-chart-cream transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-navy hover:shadow-lg"
-            >
-              Create your account
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-md border border-mist px-6 py-3 font-body font-medium text-ink-navy transition-all duration-200 hover:-translate-y-0.5 hover:border-vital-teal hover:shadow-md"
-            >
-              Log in
-            </Link>
-          </div>
-        </div>
-        <div className="animate-fade-in-up delay-1 w-full flex-1">
-          <div className="relative aspect-[4/5] min-h-[320px] w-full overflow-hidden rounded-2xl border border-mist shadow-xl">
-            {/*
-              Download a free-to-use photo from Unsplash (search "nurse" or
-              "nursing student") and save it as:
-              frontend/public/images/hero-nurse.jpg
-              Recommended size: at least 800x1000px, portrait orientation.
-            */}
-            <Image
-              src="/images/hero-nurse.jpg"
-              alt="Nursing student studying"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-        </div>
+      <HeroSection />
+
+      {/* Stats */}
+      <section className="mx-auto max-w-6xl px-6">
+        <StatCounter />
       </section>
 
       {/* Features */}
@@ -100,47 +38,11 @@ export default function Home() {
         <h2 className="text-center font-display text-3xl font-semibold text-ink-navy">
           Everything you need to walk into exam day ready
         </h2>
-        <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f, i) => (
-            <Link
-              key={f.title}
-              href="/signup"
-              style={{ transitionTimingFunction: "cubic-bezier(0.68, -0.55, 0.265, 1.55)" }}
-              className="group relative block rounded-2xl border-[3px] border-mist bg-card-bg p-6 shadow-md transition-all duration-300 hover:-translate-y-2 hover:rotate-1 hover:border-vital-teal hover:shadow-2xl active:scale-90"
-            >
-              <span
-                className="absolute -right-1 -top-1 text-xl opacity-0 group-hover:animate-sparkle"
-                aria-hidden
-              >
-                ✨
-              </span>
-              <span
-                className="absolute -left-2 top-8 text-lg opacity-0 group-hover:animate-sparkle"
-                style={{ animationDelay: "0.15s" }}
-                aria-hidden
-              >
-                ✨
-              </span>
-              <p
-                className="animate-cartoon-bob group-hover:animate-jiggle inline-block text-4xl"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              >
-                {f.icon}
-              </p>
-              <p className="mt-3 font-display text-lg font-semibold text-ink-navy transition-colors group-hover:text-vital-teal">
-                {f.title}
-              </p>
-              <p className="mt-2 text-sm text-graphite">{f.description}</p>
-              <p className="mt-3 text-xs font-bold text-vital-teal opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                Try it free →
-              </p>
-            </Link>
-          ))}
-        </div>
+        <FeatureGrid />
       </section>
 
       {/* Pricing */}
-      <section className="mx-auto max-w-4xl px-6 py-16">
+      <FadeInSection className="mx-auto max-w-4xl px-6 py-16">
         <h2 className="text-center font-display text-3xl font-semibold text-ink-navy">
           Start free. Upgrade when you&apos;re ready.
         </h2>
@@ -184,22 +86,26 @@ export default function Home() {
             </Link>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* Reviews - honest placeholder, no fabricated testimonials */}
-      <section className="mx-auto max-w-3xl px-6 py-16 text-center">
+      <FadeInSection className="mx-auto max-w-4xl px-6 py-16 text-center">
         <h2 className="font-display text-3xl font-semibold text-ink-navy">From our students</h2>
-        <div className="auth-card mt-8 p-10">
-          <Mascot className="mx-auto h-16 w-16" wave={false} />
-          <p className="mt-4 text-graphite">
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <Mascot className="h-16 w-16" wave={false} />
+          <p className="max-w-xl text-graphite">
             We&apos;re just getting started — real reviews from real students will show up here
-            as more people join. Be one of the first.
+            as more people join. Be one of the first. In the meantime, here&apos;s what&apos;s
+            already built for you:
           </p>
         </div>
-      </section>
+        <div className="mt-8">
+          <InfiniteMovingCards items={HIGHLIGHT_CARDS} />
+        </div>
+      </FadeInSection>
 
       {/* Final CTA */}
-      <section className="mx-auto max-w-3xl px-6 py-16 text-center">
+      <FadeInSection className="mx-auto max-w-3xl px-6 py-16 text-center">
         <h2 className="font-display text-3xl font-semibold text-ink-navy">
           Ready to know where you stand?
         </h2>
@@ -217,7 +123,7 @@ export default function Home() {
             Log in
           </Link>
         </div>
-      </section>
+      </FadeInSection>
     </main>
   );
 }

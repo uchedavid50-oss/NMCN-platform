@@ -213,9 +213,23 @@ body {
   animation: sparkle-pop 0.8s ease-out;
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-cartoon-bob,
   .animate-sparkle,
+  .animate-marquee,
   .group:hover .group-hover\:animate-jiggle {
     animation: none;
   }
