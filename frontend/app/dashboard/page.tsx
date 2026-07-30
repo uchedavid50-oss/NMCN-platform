@@ -24,7 +24,14 @@ const NAV_SECTIONS: { title: string; items: { href: string; label: string; icon:
       { href: "/cbt-exam", label: "CBT Center", icon: "🎓" },
       { href: "/clinical-cases", label: "Clinical Cases", icon: "🩺" },
       { href: "/osce", label: "OSCE", icon: "🩹" },
+      { href: "/viva", label: "Viva", icon: "🗣️" },
       { href: "/past-questions", label: "Past Questions", icon: "📜" },
+    ],
+  },
+  {
+    title: "Nursing Entrance Exams",
+    items: [
+      { href: "/entrance-exam", label: "Past Question Bank", icon: "🚪" },
     ],
   },
   {

@@ -14,6 +14,22 @@ import {
 import { approveAllPending } from "@/lib/api-extras-5";
 import { generateTopicNote } from "@/lib/api-extras-7";
 import { getTopicVideo, setTopicVideo } from "@/lib/api-extras-8";
+import {
+  getEquipment,
+  setEquipment,
+  uploadEquipmentPdf,
+  getOrgans,
+  getOrganVideo,
+  setOrganVideo,
+  Organ,
+} from "@/lib/api-extras-9";
+import {
+  ENTRANCE_EXAM_SUBJECTS,
+  getEntranceExamQuestions,
+  generateEntranceExamQuestions,
+  deleteEntranceExamQuestion,
+  EntranceExamQuestion,
+} from "@/lib/api-extras-10";
 
 export default function AdminContentPage() {
   const { user, token, loading } = useRequireAuth();
@@ -54,6 +70,25 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
   const [videoSaving, setVideoSaving] = useState(false);
   const [videoMessage, setVideoMessage] = useState<string | null>(null);
 
+  const [equipmentTitle, setEquipmentTitle] = useState("");
+  const [equipmentDescription, setEquipmentDescription] = useState("");
+  const [equipmentYoutubeUrl, setEquipmentYoutubeUrl] = useState("");
+  const [equipmentSaving, setEquipmentSaving] = useState(false);
+  const [equipmentMessage, setEquipmentMessage] = useState<string | null>(null);
+  const [equipmentPdfUploading, setEquipmentPdfUploading] = useState(false);
+  const equipmentPdfInputRef = useRef<HTMLInputElement>(null);
+
+  const [organs, setOrgans] = useState<Organ[]>([]);
+  const [selectedOrganId, setSelectedOrganId] = useState("");
+  const [organVideoUrl, setOrganVideoUrl] = useState("");
+  const [organVideoSaving, setOrganVideoSaving] = useState(false);
+  const [organVideoMessage, setOrganVideoMessage] = useState<string | null>(null);
+
+  const [entranceSubject, setEntranceSubject] = useState<string>(ENTRANCE_EXAM_SUBJECTS[0]);
+  const [entranceQuestions, setEntranceQuestions] = useState<EntranceExamQuestion[]>([]);
+  const [entranceGenerating, setEntranceGenerating] = useState(false);
+  const [entranceMessage, setEntranceMessage] = useState<string | null>(null);
+
   function refreshAll() {
     if (!token) return;
     api.listAllTopics().then(setTopics).catch(() => {});
@@ -76,6 +111,35 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
       .then((v) => setVideoUrl(v.youtube_url))
       .catch(() => setVideoUrl(""));
   }, [token, selectedTopicId]);
+
+  useEffect(() => {
+    if (!token) return;
+    getEquipment(token)
+      .then((e) => {
+        setEquipmentTitle(e.title);
+        setEquipmentDescription(e.description);
+        setEquipmentYoutubeUrl(e.youtube_url || "");
+      })
+      .catch(() => {});
+    getOrgans(token).then(setOrgans).catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || !selectedOrganId) {
+      setOrganVideoUrl("");
+      return;
+    }
+    getOrganVideo(selectedOrganId, token)
+      .then((v) => setOrganVideoUrl(v.youtube_url))
+      .catch(() => setOrganVideoUrl(""));
+  }, [token, selectedOrganId]);
+
+  useEffect(() => {
+    if (!token) return;
+    getEntranceExamQuestions(entranceSubject, 50, token)
+      .then(setEntranceQuestions)
+      .catch(() => setEntranceQuestions([]));
+  }, [token, entranceSubject]);
 
   if (loading || !user) {
     return (
@@ -229,6 +293,79 @@ async function handleGenerateNote() {
       setError(err instanceof ApiError ? err.message : "Couldn't save the video.");
     } finally {
       setVideoSaving(false);
+    }
+  }
+
+  async function handleSaveEquipment() {
+    if (!token) return;
+    setEquipmentSaving(true);
+    setEquipmentMessage(null);
+    setError(null);
+    try {
+      await setEquipment(equipmentTitle, equipmentDescription, equipmentYoutubeUrl, token);
+      setEquipmentMessage("Equipment details saved.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save equipment details.");
+    } finally {
+      setEquipmentSaving(false);
+    }
+  }
+
+  async function handleUploadEquipmentPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    setEquipmentPdfUploading(true);
+    setEquipmentMessage(null);
+    setError(null);
+    try {
+      await uploadEquipmentPdf(file, token);
+      setEquipmentMessage("Equipment PDF uploaded.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't upload the PDF.");
+    } finally {
+      setEquipmentPdfUploading(false);
+      if (equipmentPdfInputRef.current) equipmentPdfInputRef.current.value = "";
+    }
+  }
+
+  async function handleSaveOrganVideo() {
+    if (!token || !selectedOrganId || !organVideoUrl.trim()) return;
+    setOrganVideoSaving(true);
+    setOrganVideoMessage(null);
+    setError(null);
+    try {
+      await setOrganVideo(selectedOrganId, organVideoUrl.trim(), token);
+      setOrganVideoMessage("Video saved.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save the video.");
+    } finally {
+      setOrganVideoSaving(false);
+    }
+  }
+
+  async function handleGenerateEntranceQuestions() {
+    if (!token) return;
+    setEntranceGenerating(true);
+    setEntranceMessage(null);
+    setError(null);
+    try {
+      const created = await generateEntranceExamQuestions(entranceSubject, token);
+      setEntranceQuestions((prev) => [...created, ...prev]);
+      setEntranceMessage(`Generated ${created.length} question(s).`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't generate questions.");
+    } finally {
+      setEntranceGenerating(false);
+    }
+  }
+
+  async function handleDeleteEntranceQuestion(id: string) {
+    if (!token) return;
+    try {
+      await deleteEntranceExamQuestion(id, token);
+      setEntranceQuestions((prev) => prev.filter((q) => q.id !== id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't delete this question.");
     }
   }
 
@@ -553,6 +690,153 @@ async function handleGenerateNote() {
           </button>
         </div>
         {videoMessage && <p className="mt-2 text-sm text-vital-teal">{videoMessage}</p>}
+      </section>
+      {/* Viva: Equipment */}
+      <section className="mt-6 rounded-md border border-mist bg-card-bg p-5">
+        <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
+          Viva: Equipment page
+        </p>
+        <p className="mt-1 text-sm text-graphite">
+          One video and one PDF, shown together on the Equipment page.
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          <input
+            type="text"
+            value={equipmentTitle}
+            onChange={(e) => setEquipmentTitle(e.target.value)}
+            placeholder="Title"
+            className="rounded-md border border-mist px-3 py-2 text-sm"
+          />
+          <textarea
+            value={equipmentDescription}
+            onChange={(e) => setEquipmentDescription(e.target.value)}
+            placeholder="Short description"
+            rows={2}
+            className="rounded-md border border-mist px-3 py-2 text-sm"
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="url"
+              value={equipmentYoutubeUrl}
+              onChange={(e) => setEquipmentYoutubeUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="min-w-[20rem] flex-1 rounded-md border border-mist px-3 py-2 text-sm"
+            />
+            <button
+              onClick={handleSaveEquipment}
+              disabled={equipmentSaving}
+              className="rounded-md bg-vital-teal px-5 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+            >
+              {equipmentSaving ? "Saving…" : "Save details"}
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              ref={equipmentPdfInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={handleUploadEquipmentPdf}
+              disabled={equipmentPdfUploading}
+              className="text-sm"
+            />
+            {equipmentPdfUploading && <span className="text-sm text-graphite">Uploading…</span>}
+          </div>
+        </div>
+        {equipmentMessage && <p className="mt-2 text-sm text-vital-teal">{equipmentMessage}</p>}
+      </section>
+      {/* Viva: Organs */}
+      <section className="mt-6 rounded-md border border-mist bg-card-bg p-5">
+        <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
+          Viva: Organ video (per organ)
+        </p>
+        <p className="mt-1 text-sm text-graphite">
+          Select an organ, paste a YouTube URL, and save.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <select
+            value={selectedOrganId}
+            onChange={(e) => setSelectedOrganId(e.target.value)}
+            className="rounded-md border border-mist px-3 py-2 text-sm"
+          >
+            <option value="">Select organ…</option>
+            {organs.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="url"
+            value={organVideoUrl}
+            onChange={(e) => setOrganVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            disabled={!selectedOrganId}
+            className="min-w-[20rem] flex-1 rounded-md border border-mist px-3 py-2 text-sm disabled:opacity-50"
+          />
+          <button
+            onClick={handleSaveOrganVideo}
+            disabled={organVideoSaving || !selectedOrganId || !organVideoUrl.trim()}
+            className="rounded-md bg-vital-teal px-5 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+          >
+            {organVideoSaving ? "Saving…" : "Save video"}
+          </button>
+        </div>
+        {organVideoMessage && <p className="mt-2 text-sm text-vital-teal">{organVideoMessage}</p>}
+      </section>
+      {/* Nursing Entrance Exam bank */}
+      <section className="mt-6 rounded-md border border-mist bg-card-bg p-5">
+        <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
+          Nursing Entrance Exam bank
+        </p>
+        <p className="mt-1 text-sm text-graphite">
+          Generate and manage short-answer / fill-in-blank / theory questions per subject.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <select
+            value={entranceSubject}
+            onChange={(e) => setEntranceSubject(e.target.value)}
+            className="rounded-md border border-mist px-3 py-2 text-sm"
+          >
+            {ENTRANCE_EXAM_SUBJECTS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleGenerateEntranceQuestions}
+            disabled={entranceGenerating}
+            className="rounded-md bg-vital-teal px-5 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+          >
+            {entranceGenerating ? "Generating…" : "Generate more"}
+          </button>
+        </div>
+        {entranceMessage && <p className="mt-2 text-sm text-vital-teal">{entranceMessage}</p>}
+
+        <div className="mt-4 flex flex-col gap-2">
+          {entranceQuestions.length === 0 && (
+            <p className="text-sm text-graphite">No {entranceSubject} questions yet.</p>
+          )}
+          {entranceQuestions.map((q) => (
+            <div
+              key={q.id}
+              className="flex items-start justify-between gap-3 rounded-md border border-mist px-4 py-3"
+            >
+              <div>
+                <p className="font-mono text-xs uppercase tracking-widest text-graphite">
+                  {q.question_type.replace("_", " ")}
+                </p>
+                <p className="mt-1 text-sm text-ink-navy">{q.question_text}</p>
+              </div>
+              <button
+                onClick={() => handleDeleteEntranceQuestion(q.id)}
+                className="shrink-0 rounded-md border border-pulse-coral px-3 py-1 text-xs font-medium text-pulse-coral transition hover:bg-pulse-coral/10"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
       </section>
       {/* Pending review queue */}
       <section className="mt-6">

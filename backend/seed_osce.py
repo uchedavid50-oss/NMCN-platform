@@ -45,6 +45,7 @@ OSCE_SYLLABUS = {
         "Catheter Care and Management",
         "Enema Administration",
         "Colostomy Care",
+        "Serving of Bedpan",
     ],
     "OSCE: Respiratory Care": [
         "Oxygen Therapy (Masks, Nasal Cannula, Flow Rates)",

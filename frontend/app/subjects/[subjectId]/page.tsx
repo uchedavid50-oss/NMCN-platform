@@ -62,21 +62,9 @@ export default function SubjectTopicsPage() {
               </Link>
               <Link
                 href={`/flashcards/${topic.id}`}
-                className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal"
-              >
-                Flashcards
-              </Link>
-              <Link
-                href={`/practice/${topic.id}`}
-                className="rounded-md border border-mist px-4 py-2 text-sm font-medium text-ink-navy transition hover:border-vital-teal"
-              >
-                Practice
-              </Link>
-              <Link
-                href={`/mock/${topic.id}`}
                 className="rounded-md bg-vital-teal px-4 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy"
               >
-                Mock exam
+                Flashcards
               </Link>
             </div>
           </div>
