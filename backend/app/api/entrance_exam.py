@@ -1,14 +1,12 @@
 import json
 import re
 import uuid
-from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin, get_current_user
-from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.ai_provider_attempt import AIProviderAttempt
 from app.models.entrance_exam_generation_request import EntranceExamGenerationRequest
@@ -48,41 +46,6 @@ def _extract_json_object(text: str) -> str:
 
 router = APIRouter(prefix="/entrance-exam", tags=["entrance-exam"])
 
-# Separate budget from the tutor's DAILY_TUTOR_LIMIT (see tutor.py) so
-# generating entrance-exam questions doesn't compete with a student's
-# tutor-chat quota. Each generation call fans out to every eligible
-# provider in parallel (up to 20 questions each, deduped before saving),
-# so 5 calls/day is a generous ceiling on top of ai_router's own
-# per-provider daily caps.
-DAILY_ENTRANCE_GEN_LIMIT = 5
-
-
-def _entrance_gen_requests_today(db: Session, user_id) -> int:
-    since = utcnow() - timedelta(hours=24)
-    return (
-        db.query(EntranceExamGenerationRequest)
-        .filter(
-            EntranceExamGenerationRequest.user_id == user_id,
-            EntranceExamGenerationRequest.created_at >= since,
-        )
-        .count()
-    )
-
-
-def _check_entrance_exam_available(db: Session, user_id) -> None:
-    """Only a rate-limit gate now -- whether generation can actually
-    succeed is up to call_ai_router_parallel and the caller's own
-    all-failed/all-skipped handling below."""
-    if _entrance_gen_requests_today(db, user_id) >= DAILY_ENTRANCE_GEN_LIMIT:
-        raise HTTPException(
-            status_code=429,
-            detail=(
-                f"You've reached today's limit of {DAILY_ENTRANCE_GEN_LIMIT} "
-                "question-generation requests. This resets on a rolling "
-                "24-hour basis — try again a bit later."
-            ),
-        )
-
 
 @router.get("/questions", response_model=list[EntranceExamQuestionOut])
 def list_entrance_exam_questions(
@@ -114,14 +77,12 @@ def generate_entrance_exam_questions(
 ):
     """Admin-only -- students only ever see questions already stored in
     the database (see /entrance-exam/questions), never trigger an AI call
-    themselves. Fans out to every eligible provider in parallel (see
-    call_ai_router_parallel) instead of trying one at a time; each
-    provider that succeeds contributes up to 20 questions, deduped by
-    normalized text across all providers before saving. Still gated by
-    the same per-admin rolling-24h limit as an outer ceiling on how often
-    a bulk run can be triggered at all."""
-    _check_entrance_exam_available(db, admin.id)
-
+    themselves. No per-admin rate limit here (trusted actor, not a student
+    who could otherwise spam this) -- cost protection is the per-provider
+    daily cap in ai_router.py instead. Fans out to every eligible provider
+    in parallel (see call_ai_router_parallel) instead of trying one at a
+    time; each provider that succeeds contributes up to 20 questions,
+    deduped by normalized text across all providers before saving."""
     system_prompt = (
         f"You write past-question-bank style practice questions for the {payload.subject} "
         "section of a Nigerian nursing school entrance examination (pre-nursing / "
