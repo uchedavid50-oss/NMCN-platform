@@ -11,10 +11,10 @@ def _send_email(to_email: str, subject: str, html: str) -> None:
         "https://api.resend.com/emails",
         headers={"Authorization": f"Bearer {settings.resend_api_key}"},
         json={
-            # onboarding@resend.dev works without verifying a custom domain --
-            # fine for this volume, though verifying your own domain later
-            # improves deliverability and looks more professional.
-            "from": "Cura <onboarding@resend.dev>",
+            # curaguide.app is verified with Resend (SPF + DKIM) -- unlike the
+            # onboarding@resend.dev sandbox sender, this can deliver to any
+            # recipient, not just the Resend account's own email.
+            "from": "Cura <noreply@curaguide.app>",
             "to": [to_email],
             "subject": subject,
             "html": html,
