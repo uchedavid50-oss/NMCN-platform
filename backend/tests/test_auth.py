@@ -15,8 +15,9 @@ def test_signup_rejects_duplicate_email(client):
     assert response.status_code == 400
 
 
-def test_login_with_correct_credentials_returns_token(client):
+def test_login_with_correct_credentials_returns_token(client, verify_user):
     client.post("/auth/signup", json={"email": "login@example.com", "password": "password123"})
+    verify_user("login@example.com")
     response = client.post(
         "/auth/login",
         data={"username": "login@example.com", "password": "password123"},

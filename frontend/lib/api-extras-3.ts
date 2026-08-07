@@ -35,3 +35,17 @@ export function resetPassword(token: string, newPassword: string) {
     body: JSON.stringify({ token, new_password: newPassword }),
   });
 }
+
+export function verifyEmail(token: string) {
+  return request<{ message: string }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function resendVerification(email: string) {
+  return request<{ message: string }>("/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}

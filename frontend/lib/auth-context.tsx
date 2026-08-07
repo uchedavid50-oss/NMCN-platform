@@ -46,8 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signup(email: string, password: string) {
+    // Deliberately does not auto-login -- new accounts start unverified and
+    // login is blocked until the student clicks the emailed verification
+    // link, so an immediate login attempt here would just fail.
     await api.signup(email, password);
-    await login(email, password);
   }
 
   async function logout() {

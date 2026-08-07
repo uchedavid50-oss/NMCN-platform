@@ -43,9 +43,10 @@ def test_login_locks_account_after_max_failed_attempts(client):
     assert "try again" in locked_response.json()["detail"].lower()
 
 
-def test_successful_login_resets_failed_attempt_counter(client):
+def test_successful_login_resets_failed_attempt_counter(client, verify_user):
     email = "reset-test@example.com"
     client.post("/auth/signup", json={"email": email, "password": "correctpass1"})
+    verify_user(email)
 
     client.post("/auth/login", data={"username": email, "password": "wrong1"})
     client.post("/auth/login", data={"username": email, "password": "wrong2"})

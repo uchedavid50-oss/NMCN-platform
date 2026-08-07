@@ -46,10 +46,11 @@ def _get_reset_token_for_email(db_session, email):
     return token_row.token
 
 
-def test_reset_password_with_valid_token_succeeds(client, monkeypatch, db_session):
+def test_reset_password_with_valid_token_succeeds(client, monkeypatch, db_session, verify_user):
     monkeypatch.setattr(auth_module, "send_password_reset_email", _noop_email)
     email = "valid-reset@example.com"
     client.post("/auth/signup", json={"email": email, "password": "oldpass1"})
+    verify_user(email)
     client.post("/auth/forgot-password", json={"email": email})
 
     token = _get_reset_token_for_email(db_session, email)
@@ -98,10 +99,11 @@ def test_reset_password_rejects_weak_new_password(client, monkeypatch, db_sessio
     assert response.status_code == 422
 
 
-def test_reset_password_clears_login_lockout(client, monkeypatch, db_session):
+def test_reset_password_clears_login_lockout(client, monkeypatch, db_session, verify_user):
     monkeypatch.setattr(auth_module, "send_password_reset_email", _noop_email)
     email = "locked-then-reset@example.com"
     client.post("/auth/signup", json={"email": email, "password": "oldpass1"})
+    verify_user(email)
 
     for _ in range(5):
         client.post("/auth/login", data={"username": email, "password": "wrongpass"})

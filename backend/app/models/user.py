@@ -21,4 +21,5 @@ class User(Base):
     locked_until = Column(DateTime, nullable=True)
     totp_secret = Column(String, nullable=True)
     totp_enabled = Column(Boolean, nullable=False, default=False)
+    email_verified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=utcnow)

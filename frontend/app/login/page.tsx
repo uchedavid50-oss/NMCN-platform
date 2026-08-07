@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { resendVerification } from "@/lib/api-extras-3";
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -14,9 +15,12 @@ export default function LoginPage() {
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   async function attemptLogin(code?: string) {
     setError(null);
+    setNeedsVerification(false);
     setSubmitting(true);
     try {
       await login(email, password, code);
@@ -24,11 +28,23 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
         setRequiresTwoFactor(true);
+      } else if (err instanceof ApiError && err.message.toLowerCase().includes("verify your email")) {
+        setNeedsVerification(true);
+        setError(err.message);
       } else {
         setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    setResendState("sending");
+    try {
+      await resendVerification(email);
+    } finally {
+      setResendState("sent");
     }
   }
 
@@ -127,6 +143,24 @@ export default function LoginPage() {
             </div>
           </label>
           {error && <p className="text-sm text-pulse-coral">{error}</p>}
+          {needsVerification && (
+            <div>
+              {resendState === "sent" ? (
+                <p className="text-sm text-vital-teal">
+                  If that email is registered and not yet verified, a new link has been sent.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resendState === "sending" || !email}
+                  className="text-sm text-vital-teal hover:underline disabled:opacity-50"
+                >
+                  {resendState === "sending" ? "Sending…" : "Resend verification email"}
+                </button>
+              )}
+            </div>
+          )}
           <button
             type="submit"
             disabled={submitting}

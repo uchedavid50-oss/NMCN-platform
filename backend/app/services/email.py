@@ -37,6 +37,19 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
     )
 
 
+def send_verification_email(to_email: str, verify_link: str) -> None:
+    _send_email(
+        to_email,
+        "Verify your Cura email address",
+        (
+            "<p>Welcome to Cura! Verify your email address to activate your account.</p>"
+            f"<p><a href='{verify_link}'>Click here to verify your email</a></p>"
+            "<p>This link expires in 48 hours. If you didn't create a Cura account, you can "
+            "safely ignore this email.</p>"
+        ),
+    )
+
+
 def send_admin_signup_notification(new_user_email: str) -> None:
     """Best-effort -- callers must never let a failure here block the
     signup flow itself (see the try/except around this call in auth.py)."""

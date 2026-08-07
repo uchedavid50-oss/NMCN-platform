@@ -47,6 +47,7 @@ class UserOut(BaseModel):
     leaderboard_opt_in: bool
     display_name: str | None
     totp_enabled: bool
+    email_verified: bool
 
     class Config:
         from_attributes = True
@@ -91,3 +92,11 @@ class ResetPasswordRequest(BaseModel):
     @classmethod
     def validate_new_password(cls, v: str) -> str:
         return _validate_password_strength(v)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr

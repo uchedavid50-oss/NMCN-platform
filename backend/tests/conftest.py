@@ -106,6 +106,21 @@ def make_user(db_session):
 
 
 @pytest.fixture()
+def verify_user(db_session):
+    """Marks a signed-up user as email-verified directly in the DB -- for
+    tests that need a real /auth/signup + /auth/login round trip without
+    exercising the verification flow itself (that's covered separately in
+    test_email_verification.py)."""
+
+    def _verify(email: str):
+        user = db_session.query(User).filter(User.email == email).first()
+        user.email_verified = True
+        db_session.commit()
+
+    return _verify
+
+
+@pytest.fixture()
 def auth_headers(make_user):
     _, token = make_user()
     return {"Authorization": f"Bearer {token}"}

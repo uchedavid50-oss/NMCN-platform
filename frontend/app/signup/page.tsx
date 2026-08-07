@@ -1,30 +1,51 @@
 "use client";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
 export default function SignupPage() {
   const { signup } = useAuth();
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [signedUp, setSignedUp] = useState(false);
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
       await signup(email, password);
-      router.push("/dashboard");
+      setSignedUp(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {
       setSubmitting(false);
     }
   }
+
+  if (signedUp) {
+    return (
+      <main className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center overflow-hidden px-6 text-center">
+        <div className="ambient-glow" />
+        <div className="auth-card animate-fade-in-up p-8">
+          <h1 className="font-display text-3xl font-semibold text-ink-navy">Check your email</h1>
+          <p className="mt-3 text-graphite">
+            We&apos;ve sent a verification link to <strong>{email}</strong>. Click it to activate
+            your account, then log in.
+          </p>
+          <Link
+            href="/login"
+            className="mt-6 inline-block rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition hover:bg-ink-navy"
+          >
+            Go to login
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center overflow-hidden px-6">
       <div className="ambient-glow" />

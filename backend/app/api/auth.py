@@ -13,11 +13,13 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.core.time import utcnow
 from app.core.totp import generate_totp_secret, get_provisioning_uri, verify_totp_code
 from app.db.session import get_db
+from app.models.email_verification_token import EmailVerificationToken
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 from app.models.user_session import UserSession
 from app.schemas.auth import (
     ForgotPasswordRequest,
+    ResendVerificationRequest,
     ResetPasswordRequest,
     Token,
     TwoFactorCodeRequest,
@@ -25,14 +27,20 @@ from app.schemas.auth import (
     UserOut,
     UserSessionOut,
     UserSignup,
+    VerifyEmailRequest,
 )
-from app.services.email import send_admin_signup_notification, send_password_reset_email
+from app.services.email import (
+    send_admin_signup_notification,
+    send_password_reset_email,
+    send_verification_email,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1
+EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS = 48
 MAX_ACTIVE_DEVICES = 2
 
 
@@ -45,15 +53,34 @@ def _device_label(user_agent: str | None) -> str:
     return f"{browser} on {os_name}" if os_name != "Other" else browser
 
 
+def _issue_verification_email(user: User, db: Session) -> None:
+    token = secrets.token_urlsafe(32)
+    db.add(
+        EmailVerificationToken(
+            user_id=user.id,
+            token=token,
+            expires_at=utcnow() + timedelta(hours=EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS),
+        )
+    )
+    db.commit()
+    verify_link = f"{settings.frontend_url}/verify-email?token={token}"
+    try:
+        send_verification_email(user.email, verify_link)
+    except Exception as exc:
+        print(f"[verify-email] Failed to send verification email to {user.email}: {exc}")
+
+
 @router.post("/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def signup(payload: UserSignup, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-    user = User(email=payload.email, password_hash=hash_password(payload.password))
+    user = User(email=payload.email, password_hash=hash_password(payload.password), email_verified=False)
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    _issue_verification_email(user, db)
 
     try:
         send_admin_signup_notification(user.email)
@@ -102,6 +129,13 @@ def login(
         if not verify_totp_code(user.totp_secret, totp_code):
             _register_failed_attempt(user, db)
             raise HTTPException(status_code=401, detail="Invalid 2FA code")
+
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in. Check your inbox, or request a new "
+            "verification email via POST /auth/resend-verification.",
+        )
 
     if user.failed_login_attempts or user.locked_until:
         user.failed_login_attempts = 0
@@ -283,3 +317,28 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
     reset.used_at = utcnow()
     db.commit()
     return {"message": "Password has been reset successfully."}
+
+
+@router.post("/verify-email")
+def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
+    verification = (
+        db.query(EmailVerificationToken).filter(EmailVerificationToken.token == payload.token).first()
+    )
+    if not verification or verification.used_at is not None or verification.expires_at < utcnow():
+        raise HTTPException(status_code=400, detail="This verification link is invalid or has expired.")
+
+    user = db.query(User).filter(User.id == verification.user_id).first()
+    user.email_verified = True
+    verification.used_at = utcnow()
+    db.commit()
+    return {"message": "Email verified. You can now log in."}
+
+
+@router.post("/resend-verification")
+def resend_verification(payload: ResendVerificationRequest, db: Session = Depends(get_db)):
+    """Same generic-response reasoning as /forgot-password -- never reveal
+    whether an email is registered, or whether it's already verified."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if user and not user.email_verified:
+        _issue_verification_email(user, db)
+    return {"message": "If that email is registered and not yet verified, a new link has been sent."}
