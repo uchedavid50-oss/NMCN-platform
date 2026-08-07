@@ -70,7 +70,10 @@ def submit_answer(
 
     question = (
         db.query(Question)
-        .options(joinedload(Question.options))
+        .options(
+            joinedload(Question.options),
+            joinedload(Question.topic).joinedload(Topic.subject),
+        )
         .filter(Question.id == payload.question_id, Question.topic_id == attempt.topic_id)
         .first()
     )
@@ -104,6 +107,11 @@ def submit_answer(
         is_correct=selected_option.is_correct,
         correct_option_id=correct_option.id,
         explanation=question.explanation,
+        why_others_wrong=question.why_others_wrong,
+        clinical_tip=question.clinical_tip,
+        exam_specific_tip=question.exam_specific_tip,
+        cognitive_level=question.cognitive_level,
+        exam_type=(question.topic.subject.exam_type if question.topic and question.topic.subject else "NMCN"),
     )
 
 

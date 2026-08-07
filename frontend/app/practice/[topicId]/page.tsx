@@ -191,14 +191,64 @@ export default function PracticePage() {
 
       {feedback && (
         <div className="mt-6 rounded-md border border-mist bg-card-bg p-5">
-          <p
-            className={`font-mono text-sm font-medium uppercase tracking-widest ${
-              feedback.is_correct ? "text-vital-teal" : "text-pulse-coral"
-            }`}
-          >
-            {feedback.is_correct ? "Correct" : "Not quite"}
-          </p>
-          <p className="mt-2 text-graphite">{feedback.explanation}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p
+              className={`font-mono text-sm font-medium uppercase tracking-widest ${
+                feedback.is_correct ? "text-vital-teal" : "text-pulse-coral"
+              }`}
+            >
+              {feedback.is_correct ? "Correct" : "Not quite"}
+            </p>
+            {feedback.cognitive_level && (
+              <span className="rounded-full border border-mist px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-graphite">
+                {feedback.cognitive_level}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-col gap-3">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-graphite">Rationale</p>
+              <p className="mt-1 text-graphite">{feedback.explanation}</p>
+            </div>
+
+            {feedback.why_others_wrong && Object.keys(feedback.why_others_wrong).length > 0 && (
+              <div>
+                <p className="font-mono text-xs uppercase tracking-widest text-graphite">
+                  Why the other options are incorrect
+                </p>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {question.options.map((option, i) => {
+                    const letter = ["A", "B", "C", "D"][i];
+                    const reason = feedback.why_others_wrong?.[letter];
+                    if (!reason) return null;
+                    return (
+                      <li key={option.id} className="text-graphite">
+                        <span className="font-medium text-ink-navy">{letter}. </span>
+                        {reason}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {feedback.clinical_tip && (
+              <div>
+                <p className="font-mono text-xs uppercase tracking-widest text-graphite">Clinical tip</p>
+                <p className="mt-1 text-graphite">{feedback.clinical_tip}</p>
+              </div>
+            )}
+
+            {feedback.exam_specific_tip && (
+              <div>
+                <p className="font-mono text-xs uppercase tracking-widest text-graphite">
+                  {feedback.exam_type === "NCLEX" ? "NCLEX Tip" : "NMCN Tip"}
+                </p>
+                <p className="mt-1 text-graphite">{feedback.exam_specific_tip}</p>
+              </div>
+            )}
+          </div>
 
           <div className="mt-5 border-t border-mist pt-4">
             <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">

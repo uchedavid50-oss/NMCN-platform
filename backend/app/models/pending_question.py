@@ -14,9 +14,17 @@ class PendingQuestion(Base):
     stem = Column(Text, nullable=False)
     difficulty = Column(String, nullable=False, default="medium")
     explanation = Column(Text, nullable=False)
+    # JSON-encoded {"A": "...", "B": "...", ...} keyed by each incorrect option's
+    # letter position among the four options (A = 1st listed, ... D = 4th).
+    why_others_wrong = Column(Text, nullable=True)
+    clinical_tip = Column(Text, nullable=True)
+    # Holds NMCN-Tip or NCLEX-Tip content depending on the topic's subject.exam_type.
+    exam_specific_tip = Column(Text, nullable=True)
+    cognitive_level = Column(String, nullable=True)  # Knowledge | Application | Analysis
     status = Column(String, nullable=False, default="pending")  # pending | approved | rejected
     # Carries through to the real Question's `source` field on approval.
     source = Column(String, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
+    topic = relationship("Topic")
     options = relationship("PendingOption", back_populates="question", cascade="all, delete-orphan")

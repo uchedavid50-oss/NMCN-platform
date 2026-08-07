@@ -16,3 +16,4 @@ frontend/.next/
 Thumbs.db
 
 *.sql
+frontend/tsconfig.tsbuildinfo

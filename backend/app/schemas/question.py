@@ -1,7 +1,9 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, field_validator, model_validator
+
+from app.schemas.rationale import WhyOthersWrongMixin
 
 
 class OptionCreate(BaseModel):
@@ -47,12 +49,17 @@ class QuestionUpdate(QuestionCreate):
     pass
 
 
-class QuestionOut(BaseModel):
+class QuestionOut(WhyOthersWrongMixin, BaseModel):
     id: uuid.UUID
     topic_id: uuid.UUID
     stem: str
     difficulty: str
     explanation: str
+    clinical_tip: Optional[str] = None
+    exam_specific_tip: Optional[str] = None
+    cognitive_level: Optional[str] = None
+    # Derived from topic.subject.exam_type at request time, not a stored column.
+    exam_type: Optional[str] = None
     options: List[OptionOut]
 
     class Config:

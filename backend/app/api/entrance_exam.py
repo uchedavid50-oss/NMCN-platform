@@ -11,10 +11,13 @@ from app.db.session import get_db
 from app.models.ai_provider_attempt import AIProviderAttempt
 from app.models.entrance_exam_generation_request import EntranceExamGenerationRequest
 from app.models.entrance_exam_question import EntranceExamQuestion
+from app.models.entrance_exam_settings import EntranceExamSettings
 from app.models.user import User
 from app.schemas.entrance_exam import (
     ENTRANCE_EXAM_SUBJECTS,
     EntranceExamQuestionOut,
+    EntranceExamSettingsOut,
+    EntranceExamSettingsUpdate,
     GenerateBatchResult,
     GenerateEntranceExamRequest,
     ProviderStatusOut,
@@ -47,6 +50,16 @@ def _extract_json_object(text: str) -> str:
 router = APIRouter(prefix="/entrance-exam", tags=["entrance-exam"])
 
 
+def _get_or_create_settings(db: Session) -> EntranceExamSettings:
+    settings = db.query(EntranceExamSettings).filter(EntranceExamSettings.id == 1).first()
+    if settings is None:
+        settings = EntranceExamSettings(id=1, free_questions_per_subject=10)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+
 @router.get("/questions", response_model=list[EntranceExamQuestionOut])
 def list_entrance_exam_questions(
     subject: str,
@@ -54,6 +67,15 @@ def list_entrance_exam_questions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Admins and active subscribers get unlimited access; everyone else is
+    # capped at the admin-configurable free tier limit, randomized fresh on
+    # every request so a free student sees a different set each visit
+    # rather than the same fixed questions forever.
+    is_unlimited = current_user.role == "admin" or current_user.subscription_status == "active"
+    if not is_unlimited:
+        free_limit = _get_or_create_settings(db).free_questions_per_subject
+        count = min(count, free_limit)
+
     questions = (
         db.query(EntranceExamQuestion)
         .filter(EntranceExamQuestion.subject == subject)
@@ -221,6 +243,30 @@ def get_provider_status(
     ]
 
     return {"providers": providers, "last_used": last_used, "question_counts": question_counts}
+
+
+@router.get("/admin/settings", response_model=EntranceExamSettingsOut)
+def get_entrance_exam_settings(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    settings = _get_or_create_settings(db)
+    return {"free_questions_per_subject": settings.free_questions_per_subject}
+
+
+@router.put("/admin/settings", response_model=EntranceExamSettingsOut)
+def update_entrance_exam_settings(
+    payload: EntranceExamSettingsUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if payload.free_questions_per_subject < 1:
+        raise HTTPException(status_code=422, detail="Free questions per subject must be at least 1.")
+    settings = _get_or_create_settings(db)
+    settings.free_questions_per_subject = payload.free_questions_per_subject
+    db.commit()
+    db.refresh(settings)
+    return {"free_questions_per_subject": settings.free_questions_per_subject}
 
 
 @router.delete("/questions/{question_id}", status_code=204)

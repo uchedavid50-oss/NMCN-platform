@@ -10,6 +10,13 @@ class Question(Base):
     stem = Column(Text, nullable=False)
     difficulty = Column(String, nullable=False, default="medium")  # easy | medium | hard
     explanation = Column(Text, nullable=False)
+    # JSON-encoded {"A": "...", "B": "...", ...} keyed by each incorrect option's
+    # letter position among the four options (A = 1st listed, ... D = 4th).
+    why_others_wrong = Column(Text, nullable=True)
+    clinical_tip = Column(Text, nullable=True)
+    # Holds NMCN-Tip or NCLEX-Tip content depending on the topic's subject.exam_type.
+    exam_specific_tip = Column(Text, nullable=True)
+    cognitive_level = Column(String, nullable=True)  # Knowledge | Application | Analysis
     # Tags where this question actually came from -- "past_questions" for
     # ones generated from real past-exam documents, None/other for regular
     # admin-curated content. Lets students browse past-questions-derived

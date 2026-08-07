@@ -10,6 +10,7 @@ export default function EntranceExamSubjectPage() {
   const { subject: rawSubject } = useParams<{ subject: string }>();
   const subject = decodeURIComponent(rawSubject);
   const { user, token, loading } = useRequireAuth();
+  const isUnlimited = user?.role === "admin" || user?.subscription_status === "active";
 
   const [questions, setQuestions] = useState<EntranceExamQuestion[] | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -111,6 +112,21 @@ export default function EntranceExamSubjectPage() {
               Next →
             </button>
           </div>
+
+          {!isUnlimited && questions && currentIndex === questions.length - 1 && revealed && (
+            <div className="animate-fade-in-up mt-6 rounded-md border border-vital-teal bg-card-bg p-6 text-center">
+              <p className="text-ink-navy">
+                You have completed your free questions for this subject. Upgrade to premium for
+                unlimited access.
+              </p>
+              <Link
+                href="/subscribe"
+                className="mt-4 inline-block rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition hover:bg-ink-navy"
+              >
+                Upgrade to premium
+              </Link>
+            </div>
+          )}
         </>
       )}
 

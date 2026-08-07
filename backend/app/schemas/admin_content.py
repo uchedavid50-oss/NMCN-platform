@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.rationale import WhyOthersWrongMixin
+
 
 class AdminDocumentOut(BaseModel):
     id: uuid.UUID
@@ -29,12 +31,18 @@ class PendingOptionOut(BaseModel):
         from_attributes = True
 
 
-class PendingQuestionOut(BaseModel):
+class PendingQuestionOut(WhyOthersWrongMixin, BaseModel):
     id: uuid.UUID
     topic_id: uuid.UUID
     stem: str
     difficulty: str
     explanation: str
+    clinical_tip: Optional[str] = None
+    exam_specific_tip: Optional[str] = None
+    cognitive_level: Optional[str] = None
+    # Derived from topic.subject.exam_type at request time, not a stored column --
+    # lets the frontend label exam_specific_tip "NMCN Tip" vs "NCLEX Tip".
+    exam_type: Optional[str] = None
     status: str
     created_at: datetime
     options: List[PendingOptionOut]

@@ -65,3 +65,11 @@ class GenerateBatchResult(BaseModel):
     saved_questions: list[EntranceExamQuestionOut]
     total_saved: int
     total_generated_before_dedup: int
+
+
+class EntranceExamSettingsOut(BaseModel):
+    free_questions_per_subject: int
+
+
+class EntranceExamSettingsUpdate(BaseModel):
+    free_questions_per_subject: int

@@ -81,6 +81,11 @@ export interface AnswerResponse {
   is_correct: boolean;
   correct_option_id: string;
   explanation: string;
+  why_others_wrong: Record<string, string> | null;
+  clinical_tip: string | null;
+  exam_specific_tip: string | null;
+  cognitive_level: string | null;
+  exam_type: string | null;
 }
 
 export interface AttemptSummary {
@@ -321,6 +326,11 @@ export interface PendingQuestionOut {
   stem: string;
   difficulty: string;
   explanation: string;
+  why_others_wrong: Record<string, string> | null;
+  clinical_tip: string | null;
+  exam_specific_tip: string | null;
+  cognitive_level: string | null;
+  exam_type: string | null;
   status: string;
   created_at: string;
   options: PendingOptionOut[];

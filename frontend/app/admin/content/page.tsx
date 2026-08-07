@@ -29,6 +29,8 @@ import {
   generateEntranceExamQuestions,
   deleteEntranceExamQuestion,
   getProviderStatus,
+  getEntranceExamSettings,
+  updateEntranceExamSettings,
   EntranceExamQuestion,
   ProviderStatus,
   GenerateBatchResult,
@@ -93,6 +95,9 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
   const [entranceMessage, setEntranceMessage] = useState<string | null>(null);
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [lastRunResults, setLastRunResults] = useState<GenerateBatchResult | null>(null);
+  const [freeQuestionsLimit, setFreeQuestionsLimit] = useState<number | "">("");
+  const [entranceSettingsSaving, setEntranceSettingsSaving] = useState(false);
+  const [entranceSettingsMessage, setEntranceSettingsMessage] = useState<string | null>(null);
 
   function refreshAll() {
     if (!token) return;
@@ -149,6 +154,28 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
   function refreshProviderStatus() {
     if (!token) return;
     getProviderStatus(token).then(setProviderStatus).catch(() => {});
+  }
+
+  useEffect(() => {
+    if (!token) return;
+    getEntranceExamSettings(token)
+      .then((s) => setFreeQuestionsLimit(s.free_questions_per_subject))
+      .catch(() => {});
+  }, [token]);
+
+  async function handleSaveEntranceSettings() {
+    if (!token || freeQuestionsLimit === "") return;
+    setEntranceSettingsSaving(true);
+    setEntranceSettingsMessage(null);
+    try {
+      const updated = await updateEntranceExamSettings(Number(freeQuestionsLimit), token);
+      setFreeQuestionsLimit(updated.free_questions_per_subject);
+      setEntranceSettingsMessage("Saved.");
+    } catch (err) {
+      setEntranceSettingsMessage(err instanceof ApiError ? err.message : "Failed to save.");
+    } finally {
+      setEntranceSettingsSaving(false);
+    }
   }
 
   useEffect(() => {
@@ -812,6 +839,30 @@ async function handleGenerateNote() {
           Generate and manage short-answer / fill-in-blank / theory questions per subject.
         </p>
 
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-mist bg-chart-cream/40 p-4">
+          <label htmlFor="free-questions-limit" className="text-sm font-medium text-ink-navy">
+            Free questions per subject:
+          </label>
+          <input
+            id="free-questions-limit"
+            type="number"
+            min={1}
+            value={freeQuestionsLimit}
+            onChange={(e) => setFreeQuestionsLimit(e.target.value === "" ? "" : Number(e.target.value))}
+            className="w-24 rounded-md border border-mist px-3 py-2 text-sm"
+          />
+          <button
+            onClick={handleSaveEntranceSettings}
+            disabled={entranceSettingsSaving || freeQuestionsLimit === ""}
+            className="rounded-md bg-vital-teal px-5 py-2 text-sm font-medium text-chart-cream transition hover:bg-ink-navy disabled:opacity-50"
+          >
+            {entranceSettingsSaving ? "Saving…" : "Save"}
+          </button>
+          {entranceSettingsMessage && (
+            <p className="text-sm text-vital-teal">{entranceSettingsMessage}</p>
+          )}
+        </div>
+
         {providerStatus && (
           <div className="mt-4 rounded-md border border-mist bg-chart-cream/40 p-4">
             <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">
@@ -960,24 +1011,56 @@ async function handleGenerateNote() {
           spot-checked batches, not as a default.
         </p>
         <div className="mt-4 flex flex-col gap-4">
-          {pending.map((q) => (
+          {pending.map((q) => {
+            const letters = ["A", "B", "C", "D"];
+            const tipLabel = q.exam_type === "NCLEX" ? "NCLEX Tip" : "NMCN Tip";
+            return (
             <div key={q.id} className="rounded-md border border-mist bg-card-bg p-5">
-              <p className="font-mono text-xs uppercase tracking-widest text-graphite">
-                {q.difficulty}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-mono text-xs uppercase tracking-widest text-graphite">
+                  {q.difficulty}
+                </p>
+                {q.cognitive_level && (
+                  <span className="rounded-full border border-mist px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-graphite">
+                    {q.cognitive_level}
+                  </span>
+                )}
+              </div>
               <p className="mt-1 font-medium text-ink-navy">{q.stem}</p>
               <ul className="mt-2 flex flex-col gap-1">
-                {q.options.map((o) => (
+                {q.options.map((o, i) => (
                   <li
                     key={o.id}
                     className={`text-sm ${o.is_correct ? "font-medium text-vital-teal" : "text-graphite"}`}
                   >
-                    {o.is_correct ? "✓ " : "  "}
+                    {o.is_correct ? "✓ " : `${letters[i]}. `}
                     {o.text}
+                    {!o.is_correct && q.why_others_wrong?.[letters[i]] && (
+                      <span className="mt-0.5 block text-xs text-graphite">
+                        Why wrong: {q.why_others_wrong[letters[i]]}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-sm text-graphite">{q.explanation}</p>
+              <div className="mt-3 flex flex-col gap-2 border-t border-mist pt-3 text-sm">
+                <p className="text-graphite">
+                  <span className="font-medium text-ink-navy">Rationale: </span>
+                  {q.explanation}
+                </p>
+                {q.clinical_tip && (
+                  <p className="text-graphite">
+                    <span className="font-medium text-ink-navy">Clinical tip: </span>
+                    {q.clinical_tip}
+                  </p>
+                )}
+                {q.exam_specific_tip && (
+                  <p className="text-graphite">
+                    <span className="font-medium text-ink-navy">{tipLabel}: </span>
+                    {q.exam_specific_tip}
+                  </p>
+                )}
+              </div>
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => handleApprove(q.id)}
@@ -993,7 +1076,8 @@ async function handleGenerateNote() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
           {pending.length === 0 && (
             <p className="text-graphite">Nothing pending review right now.</p>
           )}

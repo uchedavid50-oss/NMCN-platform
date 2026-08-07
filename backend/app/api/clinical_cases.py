@@ -111,4 +111,4 @@ def complete_clinical_case(case_id: uuid.UUID, payload: ClinicalCaseCompleteRequ
     db.add(ClinicalCaseResult(case_id=case_id, user_id=current_user.id, total_decisions=payload.total_decisions, correct_decisions=payload.correct_decisions, score_percentage=score_percentage))
     db.commit()
     streak, _ = compute_streak(db, current_user.id)
-    return ClinicalCaseCompleteResponse(score_percentage=score_percentage, current_streak=streak)
+    return ClinicalCaseCompleteResponse(score_percentage=score_percentage, current_streak=streak) 

@@ -80,6 +80,22 @@ export function deleteEntranceExamQuestion(questionId: string, token: string) {
   return request<void>(`/entrance-exam/questions/${questionId}`, { method: "DELETE" }, token);
 }
 
+export interface EntranceExamSettings {
+  free_questions_per_subject: number;
+}
+
+export function getEntranceExamSettings(token: string) {
+  return request<EntranceExamSettings>("/entrance-exam/admin/settings", {}, token);
+}
+
+export function updateEntranceExamSettings(freeQuestionsPerSubject: number, token: string) {
+  return request<EntranceExamSettings>(
+    "/entrance-exam/admin/settings",
+    { method: "PUT", body: JSON.stringify({ free_questions_per_subject: freeQuestionsPerSubject }) },
+    token
+  );
+}
+
 export interface ProviderStatusEntry {
   name: string;
   configured: boolean;

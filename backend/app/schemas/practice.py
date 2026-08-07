@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+from app.schemas.rationale import WhyOthersWrongMixin
+
 
 class PracticeStartRequest(BaseModel):
     topic_id: uuid.UUID
@@ -41,10 +43,16 @@ class AnswerRequest(BaseModel):
     selected_option_id: uuid.UUID
 
 
-class AnswerResponse(BaseModel):
+class AnswerResponse(WhyOthersWrongMixin, BaseModel):
     is_correct: bool
     correct_option_id: uuid.UUID
     explanation: str
+    clinical_tip: Optional[str] = None
+    exam_specific_tip: Optional[str] = None
+    cognitive_level: Optional[str] = None
+    # Derived from topic.subject.exam_type -- lets the frontend label
+    # exam_specific_tip "NMCN Tip" vs "NCLEX Tip".
+    exam_type: Optional[str] = None
 
 
 class AttemptSummary(BaseModel):

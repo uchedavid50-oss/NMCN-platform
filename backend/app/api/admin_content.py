@@ -30,8 +30,24 @@ from app.services.note_extraction import MAX_UPLOAD_BYTES, extract_text_from_upl
 router = APIRouter(prefix="/admin/content", tags=["admin-content"])
 
 EXAM_FRAMING = {
-    "NMCN": "the NMCN (Nursing and Midwifery Council of Nigeria) Professional Qualifying Examination",
-    "NCLEX": "the NCLEX (National Council Licensure Examination) for nursing licensure",
+    "NMCN": {
+        "context": "the NMCN (Nursing and Midwifery Council of Nigeria) Professional Qualifying Examination",
+        "tip_label": "NMCN Tip",
+        "tip_instruction": (
+            "Write exam_specific_tip for the Nigerian PQE specifically: reference NMCN's scope of "
+            "practice, Nigerian healthcare protocols and facility conventions, and local drug naming "
+            "as used in Nigerian clinical practice where relevant."
+        ),
+    },
+    "NCLEX": {
+        "context": "the NCLEX (National Council Licensure Examination) for nursing licensure",
+        "tip_label": "NCLEX Tip",
+        "tip_instruction": (
+            "Write exam_specific_tip for the US NCLEX specifically: reference US scope of practice, "
+            "US-standard drug names, and NCLEX question-style conventions (e.g. Select All That Apply, "
+            "prioritization/delegation framing) where relevant."
+        ),
+    },
 }
 
 
@@ -82,31 +98,24 @@ def list_admin_documents(db: Session = Depends(get_db), admin: User = Depends(re
     return db.query(AdminDocument).order_by(AdminDocument.created_at.desc()).all()
 
 
-@router.post("/generate", response_model=list[PendingQuestionOut])
-def generate_pending_questions(
-    payload: GeneratePendingRequest,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
-    _check_tutor_available(db, admin.id)
+def _generate_questions_for_topic(
+    db: Session,
+    topic: Topic,
+    count: int,
+    document: Optional[AdminDocument] = None,
+    extraction_mode: str = "ai_generate",
+    exam_type_override: Optional[str] = None,
+) -> tuple[list[PendingQuestion], str]:
+    """Core question-generation logic shared by the /generate endpoint and the
+    bulk generate_all_questions.py script. Adds PendingQuestion rows to `db`
+    (not committed -- caller decides commit granularity) and returns them
+    along with the exam_type actually used for framing.
 
-    document = None
-    if payload.document_id:
-        document = db.query(AdminDocument).filter(AdminDocument.id == payload.document_id).first()
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-    topic = (
-        db.query(Topic)
-        .options(joinedload(Topic.subject))
-        .filter(Topic.id == payload.topic_id)
-        .first()
-    )
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
-
-    exam_type = topic.subject.exam_type if topic.subject else "NMCN"
-    exam_framing = EXAM_FRAMING.get(exam_type, EXAM_FRAMING["NMCN"])
+    exam_type_override forces NMCN/NCLEX framing regardless of the topic's
+    subject.exam_type -- used by the bulk script to generate NCLEX-style
+    content across topics that are tagged NMCN by default."""
+    exam_type = exam_type_override or (topic.subject.exam_type if topic.subject else "NMCN")
+    exam_config = EXAM_FRAMING.get(exam_type, EXAM_FRAMING["NMCN"])
 
     if document is None:
         instruction = (
@@ -114,7 +123,7 @@ def generate_pending_questions(
             "original, accurate exam-style questions on this topic."
         )
         source_material = f"Topic: {topic.name} (Subject: {topic.subject.name if topic.subject else 'General'})"
-    elif payload.extraction_mode == "verbatim" and document.document_type == "past_questions":
+    elif extraction_mode == "verbatim" and document.document_type == "past_questions":
         instruction = (
             "The source material below contains PAST EXAM QUESTIONS. Extract each question "
             "EXACTLY as written — same wording, same options, same order. Do NOT paraphrase, "
@@ -139,14 +148,28 @@ def generate_pending_questions(
         source_material = f"Source material:\n\n{document.extracted_text}"
 
     system_prompt = (
-        f"You write exam-style practice questions for a nursing student preparing for "
-        f"{exam_framing}, on the topic '{topic.name}'.\n\n{instruction}\n\n"
+        f"You write rich, exam-style practice questions for a nursing student preparing for "
+        f"{exam_config['context']}, on the topic '{topic.name}'.\n\n{instruction}\n\n"
+        "For EACH question, provide:\n"
+        "- stem, difficulty (easy|medium|hard), and exactly 4 options with exactly ONE marked "
+        "is_correct: true.\n"
+        "- explanation: a detailed rationale for the correct answer that explains the underlying "
+        "clinical reasoning, not just a restatement of the stem.\n"
+        "- why_others_wrong: a JSON object with one entry per INCORRECT option, keyed by that "
+        "option's letter position among the 4 options listed (A = 1st option, B = 2nd, C = 3rd, "
+        "D = 4th) -- omit the key for the correct option. Each value explains specifically why "
+        "that option is wrong.\n"
+        "- clinical_tip: a short, memorable, exam-focused tip tied to the underlying concept "
+        "(not specific to either exam body).\n"
+        f"- exam_specific_tip: {exam_config['tip_instruction']}\n"
+        "- cognitive_level: one of Knowledge, Application, Analysis.\n\n"
         "Respond with ONLY valid JSON, nothing else, using EXACTLY this structure "
         "(a single object with a questions key, not a bare array):\n"
-        '{"questions": [{"stem": "...", "difficulty": "easy|medium|hard", "explanation": "...", '
-        '"options": [{"text": "...", "is_correct": true|false}, ...]}]}\n\n'
-        "Each question must have exactly 4 options with exactly ONE marked is_correct: true. "
-        f"Generate up to {payload.count} questions."
+        '{"questions": [{"stem": "...", "difficulty": "easy|medium|hard", '
+        '"options": [{"text": "...", "is_correct": true|false}, ...], "explanation": "...", '
+        '"why_others_wrong": {"A": "...", "B": "...", "C": "..."}, "clinical_tip": "...", '
+        '"exam_specific_tip": "...", "cognitive_level": "Knowledge|Application|Analysis"}]}\n\n'
+        f"Generate up to {count} questions."
     )
 
     reply_text = _call_gemini(
@@ -169,12 +192,17 @@ def generate_pending_questions(
             correct_count = sum(1 for o in options if o.get("is_correct"))
             if len(options) < 2 or correct_count != 1:
                 continue
+            why_others_wrong = raw_q.get("why_others_wrong")
             pending = PendingQuestion(
                 source_document_id=document.id if document else None,
                 topic_id=topic.id,
                 stem=raw_q["stem"],
                 difficulty=raw_q.get("difficulty", "medium"),
                 explanation=raw_q["explanation"],
+                why_others_wrong=json.dumps(why_others_wrong) if isinstance(why_others_wrong, dict) else None,
+                clinical_tip=raw_q.get("clinical_tip"),
+                exam_specific_tip=raw_q.get("exam_specific_tip"),
+                cognitive_level=raw_q.get("cognitive_level"),
                 source="past_questions" if document and document.document_type == "past_questions" else None,
             )
             pending.options = [
@@ -185,13 +213,50 @@ def generate_pending_questions(
         except (KeyError, TypeError):
             continue
 
+    return created, exam_type
+
+
+@router.post("/generate", response_model=list[PendingQuestionOut])
+def generate_pending_questions(
+    payload: GeneratePendingRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    _check_tutor_available(db, admin.id)
+
+    document = None
+    if payload.document_id:
+        document = db.query(AdminDocument).filter(AdminDocument.id == payload.document_id).first()
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+    topic = (
+        db.query(Topic)
+        .options(joinedload(Topic.subject))
+        .filter(Topic.id == payload.topic_id)
+        .first()
+    )
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    created, exam_type = _generate_questions_for_topic(
+        db, topic, payload.count, document=document, extraction_mode=payload.extraction_mode
+    )
+
     if not created:
         raise HTTPException(status_code=502, detail="No well-formed questions were generated - try again.")
 
     db.commit()
     for q in created:
         db.refresh(q)
+        q.exam_type = exam_type
     return created
+
+
+def _attach_exam_type(pending_list: list[PendingQuestion]) -> list[PendingQuestion]:
+    for p in pending_list:
+        p.exam_type = p.topic.subject.exam_type if p.topic and p.topic.subject else "NMCN"
+    return pending_list
 
 
 @router.get("/pending", response_model=list[PendingQuestionOut])
@@ -201,18 +266,27 @@ def list_pending_questions(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    query = db.query(PendingQuestion).options(joinedload(PendingQuestion.options)).filter(
-        PendingQuestion.status == status
+    query = (
+        db.query(PendingQuestion)
+        .options(
+            joinedload(PendingQuestion.options),
+            joinedload(PendingQuestion.topic).joinedload(Topic.subject),
+        )
+        .filter(PendingQuestion.status == status)
     )
     if topic_id:
         query = query.filter(PendingQuestion.topic_id == topic_id)
-    return query.order_by(PendingQuestion.created_at.desc()).all()
+    results = query.order_by(PendingQuestion.created_at.desc()).all()
+    return _attach_exam_type(results)
 
 
 def _get_pending_or_404(pending_id: uuid.UUID, db: Session) -> PendingQuestion:
     pending = (
         db.query(PendingQuestion)
-        .options(joinedload(PendingQuestion.options))
+        .options(
+            joinedload(PendingQuestion.options),
+            joinedload(PendingQuestion.topic).joinedload(Topic.subject),
+        )
         .filter(PendingQuestion.id == pending_id)
         .first()
     )
@@ -236,6 +310,10 @@ def approve_pending_question(
         stem=pending.stem,
         difficulty=pending.difficulty,
         explanation=pending.explanation,
+        why_others_wrong=pending.why_others_wrong,
+        clinical_tip=pending.clinical_tip,
+        exam_specific_tip=pending.exam_specific_tip,
+        cognitive_level=pending.cognitive_level,
         source=pending.source,
     )
     question.options = [Option(text=o.text, is_correct=o.is_correct) for o in pending.options]
@@ -245,6 +323,7 @@ def approve_pending_question(
     pending.reviewed_at = utcnow()
     db.commit()
     db.refresh(pending)
+    _attach_exam_type([pending])
     return pending
 
 
@@ -283,6 +362,10 @@ def approve_all_pending_questions(
             stem=pending.stem,
             difficulty=pending.difficulty,
             explanation=pending.explanation,
+            why_others_wrong=pending.why_others_wrong,
+            clinical_tip=pending.clinical_tip,
+            exam_specific_tip=pending.exam_specific_tip,
+            cognitive_level=pending.cognitive_level,
             source=pending.source,
         )
         question.options = [Option(text=o.text, is_correct=o.is_correct) for o in pending.options]
