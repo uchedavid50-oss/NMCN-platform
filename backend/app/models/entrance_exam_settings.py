@@ -11,4 +11,4 @@ class EntranceExamSettings(Base):
     __tablename__ = "entrance_exam_settings"
 
     id = Column(Integer, primary_key=True)
-    free_questions_per_subject = Column(Integer, nullable=False, default=10)
+    free_questions_per_subject = Column(Integer, nullable=False, default=2)

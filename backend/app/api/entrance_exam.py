@@ -23,6 +23,7 @@ from app.schemas.entrance_exam import (
     ProviderStatusOut,
 )
 from app.services.ai_router import PROVIDERS, FALLBACK_MESSAGE, call_ai_router_parallel, extract_json_object
+from app.services.free_trial import is_unlimited
 
 
 def _normalize_question_text(text: str) -> str:
@@ -35,7 +36,7 @@ router = APIRouter(prefix="/entrance-exam", tags=["entrance-exam"])
 def _get_or_create_settings(db: Session) -> EntranceExamSettings:
     settings = db.query(EntranceExamSettings).filter(EntranceExamSettings.id == 1).first()
     if settings is None:
-        settings = EntranceExamSettings(id=1, free_questions_per_subject=10)
+        settings = EntranceExamSettings(id=1, free_questions_per_subject=2)
         db.add(settings)
         db.commit()
         db.refresh(settings)
@@ -53,8 +54,7 @@ def list_entrance_exam_questions(
     # capped at the admin-configurable free tier limit, randomized fresh on
     # every request so a free student sees a different set each visit
     # rather than the same fixed questions forever.
-    is_unlimited = current_user.role == "admin" or current_user.subscription_status == "active"
-    if not is_unlimited:
+    if not is_unlimited(current_user):
         free_limit = _get_or_create_settings(db).free_questions_per_subject
         count = min(count, free_limit)
 

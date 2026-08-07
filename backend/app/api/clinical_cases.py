@@ -14,6 +14,7 @@ from app.models.clinical_case_result import ClinicalCaseResult
 from app.models.subject import Subject
 from app.models.tutor_request import TutorRequest
 from app.models.user import User
+from app.services.free_trial import enforce_free_trial, is_unlimited
 from app.schemas.clinical_case import (
     ClinicalCaseCompleteRequest,
     ClinicalCaseCompleteResponse,
@@ -61,6 +62,9 @@ def _generate_case_json(subject_name: str | None) -> dict:
 @router.post("/generate", response_model=ClinicalCaseOut)
 def generate_clinical_case(payload: ClinicalCaseGenerateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _check_tutor_available(db, current_user.id)
+    if not is_unlimited(current_user):
+        existing_count = db.query(ClinicalCase).filter(ClinicalCase.user_id == current_user.id).count()
+        enforce_free_trial(current_user, existing_count, "clinical cases")
     subject_name = None
     if payload.subject_id:
         subject = db.query(Subject).filter(Subject.id == payload.subject_id).first()

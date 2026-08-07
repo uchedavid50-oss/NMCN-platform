@@ -103,6 +103,24 @@ def test_practice_answer_after_finish_is_rejected(client, auth_headers, topic_wi
     assert response.status_code == 400
 
 
+def test_free_tier_limited_to_two_practice_sessions(client, auth_headers, topic_with_question):
+    topic, _ = topic_with_question
+    for _ in range(2):
+        response = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=auth_headers)
+        assert response.status_code == 201
+
+    third = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=auth_headers)
+    assert third.status_code == 403
+    assert "free tier" in third.json()["detail"].lower()
+
+
+def test_admin_bypasses_practice_limit(client, admin_headers, topic_with_question):
+    topic, _ = topic_with_question
+    for _ in range(3):
+        response = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=admin_headers)
+        assert response.status_code == 201
+
+
 def test_practice_attempt_belongs_to_owner_only(client, auth_headers, make_user, topic_with_question):
     topic, _ = topic_with_question
     start = client.post("/practice/start", json={"topic_id": topic["id"]}, headers=auth_headers).json()

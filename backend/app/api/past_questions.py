@@ -4,10 +4,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.free_trial_usage import FreeTrialUsage
 from app.models.question import Question
 from app.models.speed_round import SpeedRoundResult
 from app.models.user import User
 from app.schemas.games import SpeedRoundQuestion, SpeedRoundSubmitRequest, SpeedRoundSubmitResponse
+from app.services.free_trial import enforce_free_trial, is_unlimited
 from app.services.streaks import compute_streak
 
 router = APIRouter(prefix="/past-questions", tags=["past-questions"])
@@ -31,6 +33,15 @@ def start_past_questions_practice(
     is_correct) is intentional, not a leak. Draws from the entire question
     bank (not just source == "past_questions") so newly generated content
     shows up here too, not just real historical exam questions."""
+    unlimited = is_unlimited(current_user)
+    if not unlimited:
+        existing_count = (
+            db.query(FreeTrialUsage)
+            .filter(FreeTrialUsage.user_id == current_user.id, FreeTrialUsage.feature == "past_questions")
+            .count()
+        )
+        enforce_free_trial(current_user, existing_count, "past-questions sessions")
+
     questions = (
         db.query(Question)
         .options(joinedload(Question.options))
@@ -43,6 +54,11 @@ def start_past_questions_practice(
             status_code=400,
             detail="No questions are available yet. Ask your admin to generate and approve some first.",
         )
+
+    if not unlimited:
+        db.add(FreeTrialUsage(user_id=current_user.id, feature="past_questions"))
+        db.commit()
+
     return questions
 
 

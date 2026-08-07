@@ -14,6 +14,7 @@ from app.models.question import Question
 from app.models.topic import Topic
 from app.models.user import User
 from app.services.mock_cleanup import finalize_expired_mock_attempts
+from app.services.free_trial import enforce_free_trial, is_unlimited
 from app.schemas.mock import (
     MockAnswerAck,
     MockAnswerRequest,
@@ -26,9 +27,6 @@ from app.schemas.mock import (
 
 router = APIRouter(prefix="/mock", tags=["mock-exam"])
 
-# Free-tier users get a limited number of mock exams total; an active subscription removes the cap.
-FREE_TIER_MOCK_LIMIT = 3
-
 
 @router.post("/start", response_model=MockStartResponse, status_code=status.HTTP_201_CREATED)
 def start_mock_exam(
@@ -36,21 +34,14 @@ def start_mock_exam(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.subscription_status != "active":
+    if not is_unlimited(current_user):
         finalize_expired_mock_attempts(db, current_user.id)
         existing_mock_count = (
             db.query(Attempt)
             .filter(Attempt.user_id == current_user.id, Attempt.mode == "mock")
             .count()
         )
-        if existing_mock_count >= FREE_TIER_MOCK_LIMIT:
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    f"Free tier is limited to {FREE_TIER_MOCK_LIMIT} mock exams. "
-                    "Subscribe via POST /payments/initialize to unlock unlimited mock exams."
-                ),
-            )
+        enforce_free_trial(current_user, existing_mock_count, "mock exams")
 
     topic = db.query(Topic).filter(Topic.id == payload.topic_id).first()
     if not topic:

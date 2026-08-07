@@ -13,6 +13,7 @@ from app.models.cbt_exam_answer import CBTExamAnswer
 from app.models.question import Question
 from app.models.topic import Topic
 from app.models.user import User
+from app.services.free_trial import enforce_free_trial, is_unlimited
 from app.schemas.cbt_exam import (
     CBTExamAnswerAck,
     CBTExamAnswerRequest,
@@ -26,30 +27,18 @@ from app.services.cbt_cleanup import finalize_expired_cbt_sessions
 
 router = APIRouter(prefix="/cbt-exam", tags=["cbt-exam"])
 
-# The flagship "real exam simulation" feature — free tier gets one attempt to
-# see what it's like, same pattern as the free-tier mock exam limit (Module 6).
-FREE_TIER_CBT_EXAM_LIMIT = 1
-
-
 @router.post("/start", response_model=CBTExamStartResponse, status_code=status.HTTP_201_CREATED)
 def start_cbt_exam(
     payload: CBTExamStartRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.subscription_status != "active":
+    if not is_unlimited(current_user):
         finalize_expired_cbt_sessions(db, current_user.id)
         existing_count = (
             db.query(CBTExamSession).filter(CBTExamSession.user_id == current_user.id).count()
         )
-        if existing_count >= FREE_TIER_CBT_EXAM_LIMIT:
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    f"Free tier is limited to {FREE_TIER_CBT_EXAM_LIMIT} full CBT exam simulation. "
-                    "Subscribe via POST /payments/initialize to unlock unlimited full exam simulations."
-                ),
-            )
+        enforce_free_trial(current_user, existing_count, "full CBT exam simulations")
 
     questions = (
         db.query(Question)

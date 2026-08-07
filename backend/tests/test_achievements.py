@@ -59,46 +59,53 @@ def test_certificate_download_rejected_when_not_eligible(client, auth_headers):
 
 
 def test_certificate_eligible_and_downloadable_after_three_good_mocks(
-    client, auth_headers, topic_with_question
+    client, make_user, topic_with_question
 ):
+    # Free tier is capped at 2 mock exams (see test_mock.py) -- certificate
+    # eligibility needs 3, so this test needs a subscribed user to reach it.
+    _, token = make_user(subscription_status="active")
+    headers = {"Authorization": f"Bearer {token}"}
     topic, question = topic_with_question
     correct_id = question["options"][1]["id"]
 
     for _ in range(3):
         start = client.post(
-            "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=auth_headers
+            "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=headers
         ).json()
         client.post(
             f"/mock/{start['attempt_id']}/answer",
             json={"question_id": question["id"], "selected_option_id": correct_id},
-            headers=auth_headers,
+            headers=headers,
         )
-        client.post(f"/mock/{start['attempt_id']}/submit", headers=auth_headers)
+        client.post(f"/mock/{start['attempt_id']}/submit", headers=headers)
 
-    eligibility = client.get("/achievements/certificate/eligibility", headers=auth_headers).json()
+    eligibility = client.get("/achievements/certificate/eligibility", headers=headers).json()
     assert eligibility["eligible"] is True
 
-    response = client.get("/achievements/certificate/download", headers=auth_headers)
+    response = client.get("/achievements/certificate/download", headers=headers)
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.content[:4] == b"%PDF"
 
 
-def test_certificate_not_eligible_with_low_average_score(client, auth_headers, topic_with_question):
+def test_certificate_not_eligible_with_low_average_score(client, make_user, topic_with_question):
+    # Same reasoning as above -- 3 mock exams needed, free tier caps at 2.
+    _, token = make_user(subscription_status="active")
+    headers = {"Authorization": f"Bearer {token}"}
     topic, question = topic_with_question
     wrong_id = question["options"][0]["id"]
 
     for _ in range(3):
         start = client.post(
-            "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=auth_headers
+            "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=headers
         ).json()
         client.post(
             f"/mock/{start['attempt_id']}/answer",
             json={"question_id": question["id"], "selected_option_id": wrong_id},
-            headers=auth_headers,
+            headers=headers,
         )
-        client.post(f"/mock/{start['attempt_id']}/submit", headers=auth_headers)
+        client.post(f"/mock/{start['attempt_id']}/submit", headers=headers)
 
-    eligibility = client.get("/achievements/certificate/eligibility", headers=auth_headers).json()
+    eligibility = client.get("/achievements/certificate/eligibility", headers=headers).json()
     assert eligibility["eligible"] is False
     assert "70%" in eligibility["reason"]

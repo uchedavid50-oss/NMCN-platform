@@ -11,6 +11,7 @@ from app.models.option import Option
 from app.models.question import Question
 from app.models.topic import Topic
 from app.models.user import User
+from app.services.free_trial import enforce_free_trial, is_unlimited
 from app.schemas.practice import (
     AnswerRequest,
     AnswerResponse,
@@ -28,6 +29,14 @@ def start_practice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not is_unlimited(current_user):
+        existing_practice_count = (
+            db.query(Attempt)
+            .filter(Attempt.user_id == current_user.id, Attempt.mode == "practice")
+            .count()
+        )
+        enforce_free_trial(current_user, existing_practice_count, "practice sessions")
+
     topic = db.query(Topic).filter(Topic.id == payload.topic_id).first()
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")

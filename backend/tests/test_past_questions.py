@@ -117,6 +117,32 @@ def test_regular_admin_content_is_included_in_past_questions(
     assert count_response.json()["count"] == 1
 
 
+def test_free_tier_limited_to_two_past_questions_sessions(client, admin_headers, auth_headers):
+    topic = _make_topic(client, admin_headers)
+    client.post(
+        "/questions",
+        json={
+            "topic_id": topic["id"],
+            "stem": "Which chamber pumps oxygenated blood to the body?",
+            "difficulty": "easy",
+            "explanation": "The left ventricle does this.",
+            "options": [
+                {"text": "Left atrium", "is_correct": False},
+                {"text": "Left ventricle", "is_correct": True},
+            ],
+        },
+        headers=admin_headers,
+    )
+
+    for _ in range(2):
+        response = client.get("/past-questions/practice", headers=auth_headers)
+        assert response.status_code == 200
+
+    third = client.get("/past-questions/practice", headers=auth_headers)
+    assert third.status_code == 403
+    assert "free tier" in third.json()["detail"].lower()
+
+
 def test_complete_past_questions_practice_updates_streak(client, auth_headers):
     response = client.post(
         "/past-questions/complete",

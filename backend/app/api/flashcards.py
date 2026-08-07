@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.free_trial_usage import FreeTrialUsage
 from app.models.question import Question
 from app.models.topic import Topic
 from app.models.user import User
 from app.schemas.flashcard import Flashcard
+from app.services.free_trial import enforce_free_trial, is_unlimited
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 
@@ -28,6 +30,16 @@ def get_flashcards(
     topic = db.query(Topic).filter(Topic.id == topic_id).first()
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+
+    if not is_unlimited(current_user):
+        existing_count = (
+            db.query(FreeTrialUsage)
+            .filter(FreeTrialUsage.user_id == current_user.id, FreeTrialUsage.feature == "flashcards")
+            .count()
+        )
+        enforce_free_trial(current_user, existing_count, "flashcard sessions")
+        db.add(FreeTrialUsage(user_id=current_user.id, feature="flashcards"))
+        db.commit()
 
     questions = (
         db.query(Question)

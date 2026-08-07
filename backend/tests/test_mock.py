@@ -125,17 +125,26 @@ def test_mock_answer_rejected_after_time_expires(client, auth_headers, topic_wit
 
 def test_free_tier_mock_limit_enforced(client, auth_headers, topic_with_question):
     topic, _ = topic_with_question
-    for _ in range(3):
+    for _ in range(2):
         response = client.post(
             "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=auth_headers
         )
         assert response.status_code == 201
 
-    fourth = client.post(
+    third = client.post(
         "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=auth_headers
     )
-    assert fourth.status_code == 403
-    assert "free tier" in fourth.json()["detail"].lower()
+    assert third.status_code == 403
+    assert "free tier" in third.json()["detail"].lower()
+
+
+def test_admin_bypasses_mock_limit(client, admin_headers, topic_with_question):
+    topic, _ = topic_with_question
+    for _ in range(3):
+        response = client.post(
+            "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=admin_headers
+        )
+        assert response.status_code == 201
 
 
 def test_active_subscription_bypasses_free_tier_limit(client, make_user, topic_with_question):

@@ -55,3 +55,21 @@ def test_flashcards_404_for_unknown_topic(client, auth_headers):
 
     response = client.get(f"/flashcards?topic_id={uuid.uuid4()}", headers=auth_headers)
     assert response.status_code == 404
+
+
+def test_free_tier_limited_to_two_flashcard_sessions(client, auth_headers, topic_with_question):
+    topic, _ = topic_with_question
+    for _ in range(2):
+        response = client.get(f"/flashcards?topic_id={topic['id']}", headers=auth_headers)
+        assert response.status_code == 200
+
+    third = client.get(f"/flashcards?topic_id={topic['id']}", headers=auth_headers)
+    assert third.status_code == 403
+    assert "free tier" in third.json()["detail"].lower()
+
+
+def test_admin_bypasses_flashcards_limit(client, admin_headers, topic_with_question):
+    topic, _ = topic_with_question
+    for _ in range(3):
+        response = client.get(f"/flashcards?topic_id={topic['id']}", headers=admin_headers)
+        assert response.status_code == 200

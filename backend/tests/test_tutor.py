@@ -155,8 +155,12 @@ def test_study_plan_with_no_data_needs_no_api_key(client, auth_headers):
 
 
 def test_study_plan_identifies_weak_topic_and_generates_plan(
-    client, auth_headers, monkeypatch, topic_with_question
+    client, make_user, monkeypatch, topic_with_question
 ):
+    # Free tier caps practice attempts at 2 (see test_practice.py); this test
+    # needs 3, so it needs a subscribed user to get past that gate.
+    _, token = make_user(subscription_status="active")
+    auth_headers = {"Authorization": f"Bearer {token}"}
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
     monkeypatch.setattr(tutor_module.genai, "Client", _FakeGenaiClient)
     topic, question = topic_with_question

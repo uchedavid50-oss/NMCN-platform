@@ -63,17 +63,26 @@ def test_start_cbt_exam_pulls_across_subjects(client, auth_headers, two_subjects
             assert "is_correct" not in option  # answers hidden, same integrity as mock exams
 
 
-def test_free_tier_limited_to_one_cbt_exam(client, auth_headers, two_subjects_with_questions):
-    first = client.post(
-        "/cbt-exam/start", json={"question_count": 10, "duration_minutes": 60}, headers=auth_headers
-    )
-    assert first.status_code == 201
+def test_free_tier_limited_to_two_cbt_exams(client, auth_headers, two_subjects_with_questions):
+    for _ in range(2):
+        response = client.post(
+            "/cbt-exam/start", json={"question_count": 10, "duration_minutes": 60}, headers=auth_headers
+        )
+        assert response.status_code == 201
 
-    second = client.post(
+    third = client.post(
         "/cbt-exam/start", json={"question_count": 10, "duration_minutes": 60}, headers=auth_headers
     )
-    assert second.status_code == 403
-    assert "free tier" in second.json()["detail"].lower()
+    assert third.status_code == 403
+    assert "free tier" in third.json()["detail"].lower()
+
+
+def test_admin_bypasses_cbt_exam_limit(client, admin_headers, two_subjects_with_questions):
+    for _ in range(3):
+        response = client.post(
+            "/cbt-exam/start", json={"question_count": 10, "duration_minutes": 60}, headers=admin_headers
+        )
+        assert response.status_code == 201
 
 
 def test_active_subscriber_bypasses_cbt_exam_limit(client, make_user, two_subjects_with_questions):

@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.free_trial_usage import FreeTrialUsage
 from app.models.question import Question
 from app.models.speed_round import SpeedRoundResult
 from app.models.topic import Topic
 from app.models.user import User
+from app.services.free_trial import enforce_free_trial, is_unlimited
 from app.schemas.games import (
     LeaderboardEntry,
     LeaderboardOptInRequest,
@@ -37,6 +39,15 @@ def start_speed_round(
     the intended mechanic rather than something to guard against. Same
     reasoning as flashcards (Module 20): open to any student, answers visible
     by design."""
+    unlimited = is_unlimited(current_user)
+    if not unlimited:
+        existing_count = (
+            db.query(FreeTrialUsage)
+            .filter(FreeTrialUsage.user_id == current_user.id, FreeTrialUsage.feature == "speed_round")
+            .count()
+        )
+        enforce_free_trial(current_user, existing_count, "speed rounds")
+
     query = db.query(Question).options(joinedload(Question.options))
     if topic_id:
         topic = db.query(Topic).filter(Topic.id == topic_id).first()
@@ -47,6 +58,13 @@ def start_speed_round(
     questions = query.order_by(func.random()).limit(count).all()
     if not questions:
         raise HTTPException(status_code=400, detail="No questions available for a speed round yet.")
+
+    # Only record the trial once we know it actually returned something,
+    # same reasoning as CBT/mock only creating their session row after the
+    # "no questions" check passes.
+    if not unlimited:
+        db.add(FreeTrialUsage(user_id=current_user.id, feature="speed_round"))
+        db.commit()
 
     return questions
 
