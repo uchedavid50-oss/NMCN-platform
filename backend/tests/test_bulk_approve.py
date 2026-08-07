@@ -2,6 +2,11 @@ import json
 
 import app.api.admin_content as admin_content_module
 from app.core.config import settings
+from app.services.ai_router import ProviderRunResult
+
+
+def _mock_router(*args, **kwargs):
+    return [ProviderRunResult(provider="Gemini", status="success", raw_text=VALID_GEMINI_JSON)]
 
 
 VALID_GEMINI_JSON = json.dumps(
@@ -51,7 +56,7 @@ def test_non_admin_cannot_bulk_approve(client, auth_headers):
 
 def test_bulk_approve_publishes_all_pending_to_official_bank(client, admin_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(admin_content_module, "_call_gemini", lambda *args, **kwargs: VALID_GEMINI_JSON)
+    monkeypatch.setattr(admin_content_module, "call_ai_router_parallel", _mock_router)
 
     topic, doc = _make_topic_and_document(client, admin_headers)
     client.post(
@@ -73,7 +78,7 @@ def test_bulk_approve_publishes_all_pending_to_official_bank(client, admin_heade
 
 def test_bulk_approve_scoped_to_single_topic(client, admin_headers, monkeypatch):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(admin_content_module, "_call_gemini", lambda *args, **kwargs: VALID_GEMINI_JSON)
+    monkeypatch.setattr(admin_content_module, "call_ai_router_parallel", _mock_router)
 
     topic1, doc1 = _make_topic_and_document(client, admin_headers)
     subject2 = client.post("/subjects", json={"name": "Pharmacology"}, headers=admin_headers).json()

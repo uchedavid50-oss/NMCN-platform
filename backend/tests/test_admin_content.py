@@ -3,7 +3,12 @@ import json
 import pytest
 
 from app.core.config import settings
+from app.services.ai_router import ProviderRunResult
 import app.api.admin_content as admin_content_module
+
+
+def _mock_router(*args, **kwargs):
+    return [ProviderRunResult(provider="Gemini", status="success", raw_text=VALID_GEMINI_JSON)]
 
 
 VALID_GEMINI_JSON = json.dumps(
@@ -75,7 +80,7 @@ def test_generate_pending_questions_creates_review_queue_entries(
     client, admin_headers, monkeypatch, topic_id
 ):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(admin_content_module, "_call_gemini", lambda *args, **kwargs: VALID_GEMINI_JSON)
+    monkeypatch.setattr(admin_content_module, "call_ai_router_parallel", _mock_router)
 
     doc = client.post(
         "/admin/content/documents/upload",
@@ -103,7 +108,7 @@ def test_approve_pending_question_publishes_to_official_bank(
     client, admin_headers, monkeypatch, topic_id
 ):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(admin_content_module, "_call_gemini", lambda *args, **kwargs: VALID_GEMINI_JSON)
+    monkeypatch.setattr(admin_content_module, "call_ai_router_parallel", _mock_router)
 
     doc = client.post(
         "/admin/content/documents/upload",
@@ -131,7 +136,7 @@ def test_reject_pending_question_never_reaches_official_bank(
     client, admin_headers, monkeypatch, topic_id
 ):
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
-    monkeypatch.setattr(admin_content_module, "_call_gemini", lambda *args, **kwargs: VALID_GEMINI_JSON)
+    monkeypatch.setattr(admin_content_module, "call_ai_router_parallel", _mock_router)
 
     doc = client.post(
         "/admin/content/documents/upload",

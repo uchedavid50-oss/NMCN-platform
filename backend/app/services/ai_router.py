@@ -33,11 +33,15 @@ from app.models.ai_provider_attempt import AIProviderAttempt
 
 REQUEST_TIMEOUT_SECONDS = 20.0
 
-# Conservative default applied uniformly to all 14 providers -- real
-# free-tier request ceilings vary per provider and change over time, so
-# this is a starting point to tune once you know each one's actual limit,
-# not an authoritative number pulled from each provider's docs.
-PROVIDER_DAILY_LIMIT = 50
+# Applied uniformly to all 14 providers -- real free-tier request ceilings
+# vary per provider and change over time (some, like Groq, comfortably
+# support thousands/day; others, like Cohere's trial key, are closer to a
+# few dozen). 200 is a deliberately generous shared default: a provider
+# that's actually capped lower just fails those extra calls gracefully
+# (logged, router moves to the next provider) rather than under-using
+# providers with real headroom. Tune down per-provider if a specific one
+# turns out to be wasting calls against a much lower real limit.
+PROVIDER_DAILY_LIMIT = 200
 
 FALLBACK_MESSAGE = (
     "All providers exhausted. Questions saved so far are preserved. Try again later."
@@ -46,6 +50,25 @@ FALLBACK_MESSAGE = (
 
 class AIProvidersExhaustedError(Exception):
     pass
+
+
+def extract_json_object(text: str) -> str:
+    """Gemini's response_mime_type="application/json" enforces clean output,
+    but not every provider has an equivalent structured-output mode -- some
+    wrap the JSON in markdown code fences or a leading sentence. Strip those
+    so json.JSONDecoder().raw_decode (which requires valid JSON starting at
+    position 0) has a clean string to work with."""
+    text = text.strip()
+    if text.startswith("```"):
+        parts = text.split("```")
+        text = parts[1] if len(parts) > 1 else text
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip()
+    brace_index = text.find("{")
+    if brace_index > 0:
+        text = text[brace_index:]
+    return text
 
 
 ProviderCall = Callable[[str, str, Optional[str]], str]

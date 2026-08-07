@@ -99,8 +99,13 @@ def test_regular_admin_content_is_included_in_past_questions(
     ).json()
 
     import app.api.admin_content as admin_content_module
+    from app.services.ai_router import ProviderRunResult
 
-    monkeypatch.setattr(admin_content_module, "_call_gemini", lambda *args, **kwargs: VALID_GEMINI_JSON)
+    monkeypatch.setattr(
+        admin_content_module,
+        "call_ai_router_parallel",
+        lambda *args, **kwargs: [ProviderRunResult(provider="Gemini", status="success", raw_text=VALID_GEMINI_JSON)],
+    )
     generated = client.post(
         "/admin/content/generate",
         json={"document_id": doc["id"], "topic_id": topic["id"], "count": 5},

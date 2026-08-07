@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import require_admin
-from app.api.tutor import _call_gemini, _check_tutor_available
+from app.api.tutor import _check_tutor_available
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.admin_document import AdminDocument
@@ -25,6 +25,7 @@ from app.schemas.admin_content import (
     GeneratePendingRequest,
     PendingQuestionOut,
 )
+from app.services.ai_router import FALLBACK_MESSAGE, call_ai_router_parallel, extract_json_object
 from app.services.note_extraction import MAX_UPLOAD_BYTES, extract_text_from_upload
 
 router = APIRouter(prefix="/admin/content", tags=["admin-content"])
@@ -172,18 +173,40 @@ def _generate_questions_for_topic(
         f"Generate up to {count} questions."
     )
 
-    reply_text = _call_gemini(
-        system_prompt,
-        source_material,
-        response_mime_type="application/json",
-        max_output_tokens=8000,
+    # Fans out to every configured, under-quota provider (see ai_router.py) instead
+    # of calling Gemini alone -- takes the first provider whose response parses into
+    # at least one well-formed question, rather than merging multiple providers'
+    # output (unlike entrance-exam generation), since a mismatched/lower-quality
+    # provider producing malformed rationale/tip fields is worse here than just
+    # falling through to the next provider.
+    provider_results = call_ai_router_parallel(
+        db, system_prompt, source_material, response_mime_type="application/json"
     )
 
-    try:
-        parsed, _ = json.JSONDecoder().raw_decode((reply_text or "{}").strip())
-        raw_questions = parsed if isinstance(parsed, list) else parsed["questions"]
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(status_code=502, detail=f"The AI didn't return usable questions - try again. ({exc})")
+    raw_questions = None
+    any_success = False
+    last_error: Exception | None = None
+    for result in provider_results:
+        if result.status != "success":
+            continue
+        any_success = True
+        try:
+            cleaned = extract_json_object(result.raw_text or "{}")
+            parsed, _ = json.JSONDecoder().raw_decode(cleaned)
+            candidate = parsed if isinstance(parsed, list) else parsed["questions"]
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            last_error = exc
+            continue
+        if candidate:
+            raw_questions = candidate
+            break
+
+    if raw_questions is None:
+        if any_success:
+            raise HTTPException(
+                status_code=502, detail=f"No provider returned usable questions - try again. ({last_error})"
+            )
+        raise HTTPException(status_code=502, detail=FALLBACK_MESSAGE)
 
     created = []
     for raw_q in raw_questions:

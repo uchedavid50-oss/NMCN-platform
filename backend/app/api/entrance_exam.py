@@ -22,30 +22,12 @@ from app.schemas.entrance_exam import (
     GenerateEntranceExamRequest,
     ProviderStatusOut,
 )
-from app.services.ai_router import PROVIDERS, FALLBACK_MESSAGE, call_ai_router_parallel
+from app.services.ai_router import PROVIDERS, FALLBACK_MESSAGE, call_ai_router_parallel, extract_json_object
 
 
 def _normalize_question_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower()).rstrip(".!?")
 
-
-def _extract_json_object(text: str) -> str:
-    """Gemini's response_mime_type="application/json" enforces clean output,
-    but not every provider has an equivalent structured-output mode -- some
-    wrap the JSON in markdown code fences or a leading sentence. Strip those
-    so json.JSONDecoder().raw_decode (which requires valid JSON starting at
-    position 0) has a clean string to work with."""
-    text = text.strip()
-    if text.startswith("```"):
-        parts = text.split("```")
-        text = parts[1] if len(parts) > 1 else text
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.strip()
-    brace_index = text.find("{")
-    if brace_index > 0:
-        text = text[brace_index:]
-    return text
 
 router = APIRouter(prefix="/entrance-exam", tags=["entrance-exam"])
 
@@ -135,7 +117,7 @@ def generate_entrance_exam_questions(
         if result.status == "success":
             any_provider_returned_text = True
             try:
-                cleaned = _extract_json_object(result.raw_text or "{}")
+                cleaned = extract_json_object(result.raw_text or "{}")
                 parsed, _ = json.JSONDecoder().raw_decode(cleaned)
                 raw_questions = parsed if isinstance(parsed, list) else parsed["questions"]
             except (json.JSONDecodeError, KeyError, TypeError, ValueError):
