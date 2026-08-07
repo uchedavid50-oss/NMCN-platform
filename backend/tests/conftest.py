@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -6,9 +7,11 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password
+from app.core.time import utcnow
 from app.db.session import Base, get_db
 from app.main import app
 from app.models.user import User
+from app.models.user_session import UserSession
 from starlette.testclient import TestClient
 
 # Tests run against a separate database so they never touch real dev data.
@@ -82,7 +85,21 @@ def make_user(db_session):
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
-        token = create_access_token(subject=str(user.id))
+
+        now = utcnow()
+        session = UserSession(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            device_label="Test client",
+            user_agent="pytest",
+            created_at=now,
+            last_active_at=now,
+            expires_at=now + timedelta(minutes=settings.access_token_expire_minutes),
+        )
+        db_session.add(session)
+        db_session.commit()
+
+        token = create_access_token(subject=str(user.id), jti=str(session.id))
         return user, token
 
     return _make_user

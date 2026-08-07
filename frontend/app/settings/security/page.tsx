@@ -161,9 +161,14 @@ export default function SecuritySettingsPage() {
         </button>
       )}
 
-      <Link href="/dashboard" className="mt-10 inline-block text-vital-teal hover:underline">
-        ← Back to dashboard
-      </Link>
+      <div className="mt-10 flex flex-col gap-2">
+        <Link href="/settings/devices" className="text-vital-teal hover:underline">
+          Manage your devices →
+        </Link>
+        <Link href="/dashboard" className="text-vital-teal hover:underline">
+          ← Back to dashboard
+        </Link>
+      </div>
     </main>
   );
 }

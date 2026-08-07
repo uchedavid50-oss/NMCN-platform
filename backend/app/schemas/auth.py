@@ -1,7 +1,10 @@
 import uuid
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
+
+from app.core.disposable_email import is_disposable_email_domain
 
 
 def _validate_password_strength(v: str) -> str:
@@ -17,6 +20,13 @@ def _validate_password_strength(v: str) -> str:
 class UserSignup(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_not_disposable(cls, v: str) -> str:
+        if is_disposable_email_domain(v):
+            raise ValueError("Please use a permanent email address to sign up.")
+        return v
 
     @field_validator("password")
     @classmethod
@@ -45,6 +55,19 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserSessionOut(BaseModel):
+    id: uuid.UUID
+    device_label: str
+    created_at: datetime
+    last_active_at: datetime
+    # Not a stored column -- set on the ORM object by the endpoint before
+    # serialization, by comparing against the requesting session's own id.
+    is_current: bool = False
+
+    class Config:
+        from_attributes = True
 
 
 class TwoFactorSetupResponse(BaseModel):

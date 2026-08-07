@@ -9,7 +9,7 @@ interface AuthContextValue {
   loading: boolean;
  login: (email: string, password: string, totpCode?: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -50,7 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await login(email, password);
   }
 
-  function logout() {
+  async function logout() {
+    if (token) {
+      try {
+        await api.logout(token);
+      } catch {
+        // Best-effort -- still clear local state even if the backend call
+        // fails (e.g. session already gone), so the user isn't stuck.
+      }
+    }
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);

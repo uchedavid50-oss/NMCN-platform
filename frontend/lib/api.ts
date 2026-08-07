@@ -48,6 +48,13 @@ export interface User {
   display_name: string | null;
   totp_enabled: boolean;
 }
+export interface UserSession {
+  id: string;
+  device_label: string;
+  created_at: string;
+  last_active_at: string;
+  is_current: boolean;
+}
 export interface Subject {
   id: string;
   name: string;
@@ -374,6 +381,13 @@ export const api = {
     request<User>("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ code }) }, token),
 
   me: (token: string) => request<User>("/auth/me", {}, token),
+
+  logout: (token: string) => request<{ message: string }>("/auth/logout", { method: "POST" }, token),
+
+  listSessions: (token: string) => request<UserSession[]>("/auth/sessions", {}, token),
+
+  deleteSession: (sessionId: string, token: string) =>
+    request<void>(`/auth/sessions/${sessionId}`, { method: "DELETE" }, token),
 
   listSubjects: () => request<Subject[]>("/subjects"),
 

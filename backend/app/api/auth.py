@@ -1,11 +1,13 @@
 import secrets
+import uuid
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from user_agents import parse as parse_user_agent
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_session, get_current_user
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.core.time import utcnow
@@ -13,6 +15,7 @@ from app.core.totp import generate_totp_secret, get_provisioning_uri, verify_tot
 from app.db.session import get_db
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.schemas.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -20,6 +23,7 @@ from app.schemas.auth import (
     TwoFactorCodeRequest,
     TwoFactorSetupResponse,
     UserOut,
+    UserSessionOut,
     UserSignup,
 )
 from app.services.email import send_admin_signup_notification, send_password_reset_email
@@ -29,6 +33,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1
+MAX_ACTIVE_DEVICES = 2
+
+
+def _device_label(user_agent: str | None) -> str:
+    if not user_agent:
+        return "Unknown device"
+    ua = parse_user_agent(user_agent)
+    browser = ua.browser.family or "Unknown browser"
+    os_name = ua.os.family or "Unknown OS"
+    return f"{browser} on {os_name}" if os_name != "Other" else browser
 
 
 @router.post("/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -61,6 +75,7 @@ def _register_failed_attempt(user: User, db: Session):
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     totp_code: str | None = Form(default=None),
+    user_agent: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.email == form_data.username).first()
@@ -93,13 +108,89 @@ def login(
         user.locked_until = None
         db.commit()
 
-    token = create_access_token(subject=str(user.id))
+    now = utcnow()
+    # Prune this user's expired sessions before counting -- a session past
+    # its own expires_at can't authenticate anything anyway (see
+    # get_current_session), so it shouldn't permanently occupy a device slot.
+    db.query(UserSession).filter(UserSession.user_id == user.id, UserSession.expires_at <= now).delete()
+
+    active_count = db.query(UserSession).filter(UserSession.user_id == user.id).count()
+    if active_count >= MAX_ACTIVE_DEVICES:
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"You've reached the maximum of {MAX_ACTIVE_DEVICES} devices for this account. "
+                "Log out from another device to continue."
+            ),
+        )
+
+    session = UserSession(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        device_label=_device_label(user_agent),
+        user_agent=user_agent,
+        created_at=now,
+        last_active_at=now,
+        expires_at=now + timedelta(minutes=settings.access_token_expire_minutes),
+    )
+    db.add(session)
+    db.commit()
+
+    token = create_access_token(subject=str(user.id), jti=str(session.id))
     return Token(access_token=token)
 
 
 @router.get("/me", response_model=UserOut)
 def read_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/logout")
+def logout(
+    session: UserSession = Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    db.delete(session)
+    db.commit()
+    return {"message": "Logged out"}
+
+
+@router.get("/sessions", response_model=list[UserSessionOut])
+def list_sessions(
+    session: UserSession = Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    sessions = (
+        db.query(UserSession)
+        .filter(UserSession.user_id == session.user_id)
+        .order_by(UserSession.last_active_at.desc())
+        .all()
+    )
+    for s in sessions:
+        s.is_current = s.id == session.id
+    return sessions
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_session(
+    session_id: uuid.UUID,
+    session: UserSession = Depends(get_current_session),
+    db: Session = Depends(get_db),
+):
+    """Logs out a specific device -- including the current one, which has
+    the same effect as /auth/logout. Scoped to the requester's own sessions
+    so a token from one account can't be used to log another account out."""
+    target = (
+        db.query(UserSession)
+        .filter(UserSession.id == session_id, UserSession.user_id == session.user_id)
+        .first()
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="Session not found")
+    db.delete(target)
+    db.commit()
+    return None
 
 
 @router.post("/2fa/setup", response_model=TwoFactorSetupResponse)
