@@ -10,6 +10,17 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   },
 });
 
-const nextConfig = {};
+const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.curaguide.app" }],
+        destination: "https://curaguide.app/:path*",
+        permanent: true,
+      },
+    ];
+  },
+};
 
 module.exports = withPWA(nextConfig);

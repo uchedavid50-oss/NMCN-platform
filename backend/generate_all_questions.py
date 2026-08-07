@@ -4,13 +4,16 @@ clinical_tip, exam_specific_tip, cognitive_level) for every topic in the
 database, landing them in the pending-review queue.
 
 Usage:
-    python generate_all_questions.py <count_per_topic> [--exam-type=nmcn|nclex] [--limit=N]
+    python generate_all_questions.py <count_per_topic> [--exam-type=nmcn|nclex] [--limit=N] [--topics-file=path]
 
-    --exam-type   Forces NMCN or NCLEX framing for every topic, regardless of
-                  that topic's subject.exam_type. Omit to use each topic's own
-                  exam_type (the normal per-topic behavior).
-    --limit       Only process the first N topics -- for a quick preview run
-                  before committing to the full topic list.
+    --exam-type    Forces NMCN or NCLEX framing for every topic, regardless of
+                   that topic's subject.exam_type. Omit to use each topic's own
+                   exam_type (the normal per-topic behavior).
+    --limit        Only process the first N topics -- for a quick preview run
+                   before committing to the full topic list.
+    --topics-file  Only process topics whose name (exact match) appears in this
+                   file, one name per line -- for resuming a run scoped to just
+                   the topics that failed/were skipped last time.
 
 Includes pacing between requests to avoid rate limits. Commits per topic, so
 a crash partway through still keeps everything generated up to that point.
@@ -26,7 +29,7 @@ from app.models.user import User
 from app.api.admin_content import _generate_questions_for_topic, EXAM_FRAMING
 
 
-def run(count: int, exam_type_override: str | None, limit: int | None):
+def run(count: int, exam_type_override: str | None, limit: int | None, topics_file: str | None):
     db = SessionLocal()
     admin = db.query(User).filter(User.role == "admin").first()
     if not admin:
@@ -38,6 +41,10 @@ def run(count: int, exam_type_override: str | None, limit: int | None):
     failed = 0
     try:
         query = db.query(Topic).order_by(Topic.name)
+        if topics_file:
+            with open(topics_file, encoding="utf-8") as f:
+                names = [line.strip() for line in f if line.strip()]
+            query = query.filter(Topic.name.in_(names))
         if limit:
             query = query.limit(limit)
         topics = query.all()
@@ -84,10 +91,13 @@ if __name__ == "__main__":
         help=f"Force framing regardless of topic exam_type: one of {list(EXAM_FRAMING)} (case-insensitive)",
     )
     parser.add_argument("--limit", type=int, default=None, help="Only process the first N topics")
+    parser.add_argument(
+        "--topics-file", type=str, default=None, help="Only process topic names listed in this file"
+    )
     args = parser.parse_args()
 
     exam_type_override = args.exam_type.upper() if args.exam_type else None
     if exam_type_override and exam_type_override not in EXAM_FRAMING:
         parser.error(f"--exam-type must be one of {list(EXAM_FRAMING)}")
 
-    run(args.count, exam_type_override, args.limit)
+    run(args.count, exam_type_override, args.limit, args.topics_file)
