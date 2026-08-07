@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.rationale import WhyOthersWrongMixin
+
 
 class CBTExamStartRequest(BaseModel):
     question_count: int = Field(default=250, ge=10, le=300)
@@ -46,7 +48,7 @@ class CBTExamAnswerAck(BaseModel):
     message: str
 
 
-class CBTExamBreakdownItem(BaseModel):
+class CBTExamBreakdownItem(WhyOthersWrongMixin, BaseModel):
     question_id: uuid.UUID
     stem: str
     subject_name: str
@@ -54,6 +56,13 @@ class CBTExamBreakdownItem(BaseModel):
     correct_option_text: str
     is_correct: bool
     explanation: str
+    # All 4 option texts in stored order -- lets the frontend map
+    # why_others_wrong's letter keys (A = 1st option, ...) back to text.
+    option_texts: List[str] = []
+    clinical_tip: Optional[str] = None
+    exam_specific_tip: Optional[str] = None
+    cognitive_level: Optional[str] = None
+    exam_type: Optional[str] = None
 
 
 class CBTExamSubmitResponse(BaseModel):

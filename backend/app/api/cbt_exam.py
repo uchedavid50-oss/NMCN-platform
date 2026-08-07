@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models.cbt_exam import CBTExamSession
 from app.models.cbt_exam_answer import CBTExamAnswer
 from app.models.question import Question
+from app.models.topic import Topic
 from app.models.user import User
 from app.schemas.cbt_exam import (
     CBTExamAnswerAck,
@@ -156,7 +157,10 @@ def submit_cbt_exam(
 
     questions = (
         db.query(Question)
-        .options(joinedload(Question.options), joinedload(Question.topic))
+        .options(
+            joinedload(Question.options),
+            joinedload(Question.topic).joinedload(Topic.subject),
+        )
         .filter(Question.id.in_(session.question_ids))
         .all()
     )
@@ -186,6 +190,14 @@ def submit_cbt_exam(
                 correct_option_text=correct_option.text,
                 is_correct=is_correct,
                 explanation=question.explanation,
+                option_texts=[o.text for o in question.options],
+                why_others_wrong=question.why_others_wrong,
+                clinical_tip=question.clinical_tip,
+                exam_specific_tip=question.exam_specific_tip,
+                cognitive_level=question.cognitive_level,
+                exam_type=(
+                    question.topic.subject.exam_type if question.topic and question.topic.subject else "NMCN"
+                ),
             )
         )
 

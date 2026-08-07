@@ -161,7 +161,50 @@ export default function CBTExamPage() {
                   <span className="text-vital-teal">{item.correct_option_text}</span>
                 </p>
               )}
-              <p className="mt-2 text-sm text-graphite">{item.explanation}</p>
+
+              <div className="mt-3 flex flex-col gap-2 border-t border-mist pt-3 text-sm">
+                <p className="text-graphite">
+                  <span className="font-medium text-ink-navy">Rationale: </span>
+                  {item.explanation}
+                </p>
+
+                {item.why_others_wrong && Object.keys(item.why_others_wrong).length > 0 && (
+                  <div>
+                    <p className="font-mono text-xs uppercase tracking-widest text-graphite">
+                      Why the other options are incorrect
+                    </p>
+                    <ul className="mt-1 flex flex-col gap-1">
+                      {item.option_texts.map((text, idx) => {
+                        const letter = ["A", "B", "C", "D"][idx];
+                        const reason = item.why_others_wrong?.[letter];
+                        if (!reason) return null;
+                        return (
+                          <li key={letter} className="text-graphite">
+                            <span className="font-medium text-ink-navy">{letter}. </span>
+                            {reason}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                {item.clinical_tip && (
+                  <p className="text-graphite">
+                    <span className="font-medium text-ink-navy">Clinical tip: </span>
+                    {item.clinical_tip}
+                  </p>
+                )}
+
+                {item.exam_specific_tip && (
+                  <p className="text-graphite">
+                    <span className="font-medium text-ink-navy">
+                      {item.exam_type === "NCLEX" ? "NCLEX Tip" : "NMCN Tip"}:{" "}
+                    </span>
+                    {item.exam_specific_tip}
+                  </p>
+                )}
+              </div>
             </div>
           ))}
         </div>

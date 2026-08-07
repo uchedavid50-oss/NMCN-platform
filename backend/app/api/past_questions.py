@@ -15,7 +15,7 @@ router = APIRouter(prefix="/past-questions", tags=["past-questions"])
 
 @router.get("/count")
 def get_past_questions_count(db: Session = Depends(get_db)):
-    count = db.query(Question).filter(Question.source == "past_questions").count()
+    count = db.query(Question).count()
     return {"count": count}
 
 
@@ -26,14 +26,14 @@ def start_past_questions_practice(
     current_user: User = Depends(get_current_user),
 ):
     """Same design reasoning as flashcards and speed round: this is a review
-    tool for material approved from real past-exam questions, not the
-    formal certification-relevant assessment engine, so showing the answer
-    immediately (via SpeedRoundQuestion, which includes is_correct) is
-    intentional, not a leak."""
+    tool, not the formal certification-relevant assessment engine, so
+    showing the answer immediately (via SpeedRoundQuestion, which includes
+    is_correct) is intentional, not a leak. Draws from the entire question
+    bank (not just source == "past_questions") so newly generated content
+    shows up here too, not just real historical exam questions."""
     questions = (
         db.query(Question)
         .options(joinedload(Question.options))
-        .filter(Question.source == "past_questions")
         .order_by(func.random())
         .limit(count)
         .all()
@@ -41,7 +41,7 @@ def start_past_questions_practice(
     if not questions:
         raise HTTPException(
             status_code=400,
-            detail="No past-questions-derived content is available yet. Ask your admin to generate and approve some first.",
+            detail="No questions are available yet. Ask your admin to generate and approve some first.",
         )
     return questions
 

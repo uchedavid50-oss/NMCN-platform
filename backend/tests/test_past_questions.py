@@ -78,9 +78,13 @@ def test_approved_past_question_shows_up_in_dedicated_practice(
     assert any(o["is_correct"] for o in questions[0]["options"])
 
 
-def test_regular_admin_content_does_not_leak_into_past_questions(
+def test_regular_admin_content_is_included_in_past_questions(
     client, admin_headers, monkeypatch
 ):
+    """The past-questions pool intentionally draws from the entire question
+    bank, not just source == "past_questions" -- regular admin-generated
+    content (e.g. the NCLEX/NMCN bulk generation pipeline) should show up
+    here too, not just real historical exam questions."""
     monkeypatch.setattr(settings, "google_api_key", "fake-key-for-tests")
 
     subject = client.post("/subjects", json={"name": "Pharmacology"}, headers=admin_headers).json()
@@ -105,7 +109,7 @@ def test_regular_admin_content_does_not_leak_into_past_questions(
     client.post(f"/admin/content/pending/{generated[0]['id']}/approve", headers=admin_headers)
 
     count_response = client.get("/past-questions/count")
-    assert count_response.json()["count"] == 0
+    assert count_response.json()["count"] == 1
 
 
 def test_complete_past_questions_practice_updates_streak(client, auth_headers):

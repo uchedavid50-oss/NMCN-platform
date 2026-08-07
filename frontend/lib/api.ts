@@ -267,6 +267,12 @@ export interface CBTExamBreakdownItem {
   correct_option_text: string;
   is_correct: boolean;
   explanation: string;
+  option_texts: string[];
+  why_others_wrong: Record<string, string> | null;
+  clinical_tip: string | null;
+  exam_specific_tip: string | null;
+  cognitive_level: string | null;
+  exam_type: string | null;
 }
 
 export interface CBTExamSubmitResponse {
