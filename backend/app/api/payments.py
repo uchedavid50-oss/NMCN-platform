@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.config import settings
+from app.core.config import PREMIUM_LIFETIME_PRICE_KOBO, settings
 from app.db.session import get_db
 from app.models.subscription import Subscription
 from app.models.user import User
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 # Kept as a dict (not a single constant) so a second tier could be added
 # later without changing the endpoint shape.
 PLAN_PRICES_KOBO = {
-    "premium_lifetime": 500000,  # ₦5,000, one-time
+    "premium_lifetime": PREMIUM_LIFETIME_PRICE_KOBO,  # one-time
 }
 
 

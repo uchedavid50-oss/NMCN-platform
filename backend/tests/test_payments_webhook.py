@@ -32,7 +32,7 @@ def test_webhook_activates_subscription_on_valid_signature(
         status="pending",
         provider="paystack",
         reference="nmcn_test_reference_123",
-        amount_kobo=500000,
+        amount_kobo=300000,
         currency="NGN",
     )
     db_session.add(subscription)

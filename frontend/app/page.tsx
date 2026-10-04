@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PREMIUM_LIFETIME_PRICE_LABEL } from "@/lib/pricing";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Mascot } from "@/components/Mascot";
 import { HeroSection } from "@/components/landing/HeroSection";
@@ -70,7 +71,7 @@ export default function Home() {
             </p>
             <p className="font-mono text-xs uppercase tracking-widest text-vital-teal">Premium</p>
             <p className="mt-2 font-display text-3xl font-semibold text-ink-navy">
-              ₦5,000 <span className="text-base font-normal text-graphite">once, forever</span>
+              {PREMIUM_LIFETIME_PRICE_LABEL} <span className="text-base font-normal text-graphite">once, forever</span>
             </p>
             <ul className="mt-6 flex flex-col gap-3 text-sm text-graphite">
               <li>✓ Everything in Free</li>

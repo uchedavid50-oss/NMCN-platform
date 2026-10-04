@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRequireAuth } from "@/lib/use-require-auth";
 import { ApiError } from "@/lib/api";
+import { PREMIUM_LIFETIME_PRICE_LABEL } from "@/lib/pricing";
 import { initializePayment, getSubscriptionStatus, SubscriptionStatus } from "@/lib/api-extras-4";
 
 const PLAN = "premium_lifetime";
-const PLAN_LABEL = "Premium — ₦5,000 one-time";
+const PLAN_LABEL = `Premium — ${PREMIUM_LIFETIME_PRICE_LABEL} one-time`;
 
 export default function SubscribePage() {
   const { user, token, loading } = useRequireAuth();

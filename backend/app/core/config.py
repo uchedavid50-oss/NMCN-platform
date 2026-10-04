@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings
 
+# Lifetime Premium price in kobo (₦3,000). Single source of truth on the backend;
+# the frontend mirror is frontend/lib/pricing.ts -- keep the two in sync.
+PREMIUM_LIFETIME_PRICE_KOBO = 300000
+
 
 class Settings(BaseSettings):
     environment: str = "development"  # set to "production" on Railway
