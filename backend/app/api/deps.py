@@ -73,3 +73,26 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
+
+
+PAYMENT_REQUIRED_CODE = "PAYMENT_REQUIRED"
+
+
+def has_paid_access(user: User) -> bool:
+    return user.role == "admin" or user.subscription_status == "active"
+
+
+def require_paid_user(current_user: User = Depends(get_current_user)) -> User:
+    """Gate for every content endpoint: only paid subscribers
+    (subscription_status == "active") and admins get through. The detail is
+    a structured object so the frontend can key off `code` and send the user
+    to /subscribe, rather than string-matching a message."""
+    if not has_paid_access(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": PAYMENT_REQUIRED_CODE,
+                "message": "A paid subscription is required to access this content.",
+            },
+        )
+    return current_user

@@ -25,9 +25,9 @@ def sample_question(client, admin_headers, sample_topic):
     return client.post("/questions", json=payload, headers=admin_headers).json()
 
 
-def test_subjects_list_is_public(client, sample_topic):
-    response = client.get("/subjects")
-    assert response.status_code == 200
+def test_subjects_list_requires_payment(client, sample_topic, auth_headers):
+    assert client.get("/subjects").status_code == 401
+    assert client.get("/subjects", headers=auth_headers).status_code == 200
 
 
 def test_subject_create_requires_admin(client, auth_headers):
@@ -88,9 +88,9 @@ def test_question_read_works_for_admin(client, admin_headers, sample_question):
 
 def test_subject_delete_cascades_to_topics_and_questions(client, admin_headers, sample_topic, sample_question):
     subject_id = None
-    subjects = client.get("/subjects").json()
+    subjects = client.get("/subjects", headers=admin_headers).json()
     for s in subjects:
-        topics = client.get(f"/topics?subject_id={s['id']}").json()
+        topics = client.get(f"/topics?subject_id={s['id']}", headers=admin_headers).json()
         if any(t["id"] == sample_topic["id"] for t in topics):
             subject_id = s["id"]
             break
@@ -99,5 +99,5 @@ def test_subject_delete_cascades_to_topics_and_questions(client, admin_headers, 
     delete_response = client.delete(f"/subjects/{subject_id}", headers=admin_headers)
     assert delete_response.status_code == 204
 
-    remaining_topics = client.get(f"/topics?subject_id={subject_id}").json()
+    remaining_topics = client.get(f"/topics?subject_id={subject_id}", headers=admin_headers).json()
     assert remaining_topics == []

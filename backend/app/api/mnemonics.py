@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.api.tutor import _call_gemini, _check_tutor_available
 from app.db.session import get_db
 from app.models.mnemonic import Mnemonic
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/mnemonics", tags=["mnemonics"])
 def generate_mnemonic(
     payload: MnemonicGenerateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     _check_tutor_available(db, current_user.id)
 
@@ -42,7 +42,7 @@ def generate_mnemonic(
 @router.get("", response_model=list[MnemonicOut])
 def list_mnemonics(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     return (
         db.query(Mnemonic)

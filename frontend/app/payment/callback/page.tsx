@@ -1,38 +1,52 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useRequireAuth } from "@/lib/use-require-auth";
-import { getSubscriptionStatus, SubscriptionStatus } from "@/lib/api-extras-4";
+import { useAuth } from "@/lib/auth-context";
+import { getSubscriptionStatus, verifyPayment } from "@/lib/api-extras-4";
 import { Confetti } from "@/components/Confetti";
 import { Mascot } from "@/components/Mascot";
 
 function PaymentCallbackContent() {
   const { user, token, loading } = useRequireAuth();
-  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+  const { refreshUser } = useAuth();
+  const searchParams = useSearchParams();
+  // Paystack appends ?reference=...&trxref=... when it redirects back.
+  const reference = searchParams.get("reference") || searchParams.get("trxref");
+  const [isActive, setIsActive] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [celebrated, setCelebrated] = useState(false);
   const MAX_ATTEMPTS = 6;
 
   useEffect(() => {
     if (!token) return;
-    if (status?.status === "active") return;
+    if (isActive) return;
     if (attempts >= MAX_ATTEMPTS) return;
 
     const t = setTimeout(async () => {
       try {
-        const result = await getSubscriptionStatus(token);
-        setStatus(result);
+        // The backend verifies the transaction with Paystack and activates
+        // the account itself (idempotent), so this doesn't depend on the
+        // webhook having arrived. Without a reference (page opened by hand)
+        // we can only read the current status.
+        const active = reference
+          ? (await verifyPayment(reference, token)).subscription_status === "active"
+          : (await getSubscriptionStatus(token)).status === "active";
+        if (active) {
+          await refreshUser();
+          setIsActive(true);
+        }
       } catch {
         // ignore, will retry
       } finally {
         setAttempts((a) => a + 1);
       }
-    }, 2000);
+    }, attempts === 0 ? 0 : 2000);
 
     return () => clearTimeout(t);
-  }, [token, status, attempts]);
-
-  const isActive = status?.status === "active";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, reference, isActive, attempts]);
 
   useEffect(() => {
     if (isActive) setCelebrated(true);
@@ -57,7 +71,7 @@ function PaymentCallbackContent() {
           <h1 className="mt-4 font-display text-2xl font-semibold text-ink-navy">
             You're all set!
           </h1>
-          <p className="mt-2 text-graphite">Your premium subscription is now active.</p>
+          <p className="mt-2 text-graphite">Your Premium access is now active.</p>
         </>
       ) : stillWaiting ? (
         <>
@@ -74,17 +88,17 @@ function PaymentCallbackContent() {
             Still processing
           </h1>
           <p className="mt-2 text-graphite">
-            Your payment may still be confirming on Paystack's side. If this doesn't update
-            shortly, check your subscription status again in a few minutes — no need to pay
-            twice.
+            Your payment may still be confirming on Paystack's side. Refresh this page in a
+            minute — no need to pay twice. If it still doesn't unlock, contact support and
+            we'll activate your account.
           </p>
         </>
       )}
       <Link
-        href="/dashboard"
+        href={isActive ? "/dashboard" : "/subscribe"}
         className="mt-8 rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-navy hover:shadow-lg"
       >
-        Back to dashboard
+        {isActive ? "Go to dashboard" : "Back to subscription"}
       </Link>
     </main>
   );

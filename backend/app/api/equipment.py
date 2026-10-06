@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin, get_current_user
+from app.api.deps import require_admin, require_paid_user
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.equipment_content import EquipmentContent
@@ -27,7 +27,7 @@ def _get_or_create(db: Session) -> EquipmentContent:
 @router.get("", response_model=EquipmentOut)
 def get_equipment(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     return _get_or_create(db)
 
@@ -35,7 +35,7 @@ def get_equipment(
 @router.get("/pdf")
 def download_equipment_pdf(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     equipment = db.query(EquipmentContent).first()
     if not equipment or not equipment.pdf_data:

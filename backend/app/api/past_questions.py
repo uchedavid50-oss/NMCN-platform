@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.free_trial_usage import FreeTrialUsage
 from app.models.question import Question
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/past-questions", tags=["past-questions"])
 
 
 @router.get("/count")
-def get_past_questions_count(db: Session = Depends(get_db)):
+def get_past_questions_count(db: Session = Depends(get_db), _user: User = Depends(require_paid_user)):
     count = db.query(Question).count()
     return {"count": count}
 
@@ -25,7 +25,7 @@ def get_past_questions_count(db: Session = Depends(get_db)):
 def start_past_questions_practice(
     count: int = Query(default=20, ge=1, le=10000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """Same design reasoning as flashcards and speed round: this is a review
     tool, not the formal certification-relevant assessment engine, so
@@ -66,7 +66,7 @@ def start_past_questions_practice(
 def complete_past_questions_practice(
     payload: SpeedRoundSubmitRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """Reuses the SpeedRoundResult model for logging -- same shape (total
     questions, correct answers, score, timestamp), same contribution to the

@@ -4,7 +4,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.course import Course, GRADE_POINTS
 from app.models.user import User
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/cgpa", tags=["cgpa"])
 def add_course(
     payload: CourseCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     course = Course(
         user_id=current_user.id,
@@ -36,7 +36,7 @@ def add_course(
 def delete_course(
     course_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     course = (
         db.query(Course).filter(Course.id == course_id, Course.user_id == current_user.id).first()
@@ -51,7 +51,7 @@ def delete_course(
 @router.get("/summary", response_model=CGPASummary)
 def get_cgpa_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     courses = (
         db.query(Course)

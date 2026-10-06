@@ -2,9 +2,25 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export class ApiError extends Error {
   status: number;
+  paymentRequired = false;
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
+    // Every request helper (api.ts and the api-extras-* copies) builds its
+    // errors through here, so this is the one place that handles the
+    // backend's paywall response globally: 403 with detail.code ==
+    // PAYMENT_REQUIRED means "not a paid user" -> send them to /subscribe.
+    if (status === 403 && message.includes("PAYMENT_REQUIRED")) {
+      this.paymentRequired = true;
+      try {
+        this.message = JSON.parse(message).message ?? message;
+      } catch {
+        // keep the raw message
+      }
+      if (typeof window !== "undefined" && window.location.pathname !== "/subscribe") {
+        window.location.assign("/subscribe");
+      }
+    }
   }
 }
 

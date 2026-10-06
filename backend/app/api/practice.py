@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.attempt import Attempt
 from app.models.attempt_answer import AttemptAnswer
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/practice", tags=["practice"])
 def start_practice(
     payload: PracticeStartRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     if not is_unlimited(current_user):
         existing_practice_count = (
@@ -67,7 +67,7 @@ def submit_answer(
     attempt_id: uuid.UUID,
     payload: AnswerRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     attempt = db.query(Attempt).filter(Attempt.id == attempt_id).first()
     if not attempt:
@@ -128,7 +128,7 @@ def submit_answer(
 def finish_practice(
     attempt_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     from app.core.time import utcnow
 
@@ -167,7 +167,7 @@ def finish_practice(
 def get_attempt_status(
     attempt_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     attempt = db.query(Attempt).filter(Attempt.id == attempt_id).first()
     if not attempt:

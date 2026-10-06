@@ -4,7 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.api.tutor import _call_gemini, _check_tutor_available
 from app.db.session import get_db
 from app.models.clinical_case import ClinicalCase
@@ -60,7 +60,7 @@ def _generate_case_json(subject_name: str | None) -> dict:
 
 
 @router.post("/generate", response_model=ClinicalCaseOut)
-def generate_clinical_case(payload: ClinicalCaseGenerateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def generate_clinical_case(payload: ClinicalCaseGenerateRequest, db: Session = Depends(get_db), current_user: User = Depends(require_paid_user)):
     _check_tutor_available(db, current_user.id)
     if not is_unlimited(current_user):
         existing_count = db.query(ClinicalCase).filter(ClinicalCase.user_id == current_user.id).count()
@@ -92,12 +92,12 @@ def generate_clinical_case(payload: ClinicalCaseGenerateRequest, db: Session = D
 
 
 @router.get("", response_model=list[ClinicalCaseSummary])
-def list_clinical_cases(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_clinical_cases(db: Session = Depends(get_db), current_user: User = Depends(require_paid_user)):
     return db.query(ClinicalCase).filter(ClinicalCase.user_id == current_user.id).order_by(ClinicalCase.created_at.desc()).all()
 
 
 @router.get("/{case_id}", response_model=ClinicalCaseOut)
-def get_clinical_case(case_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_clinical_case(case_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_paid_user)):
     case = db.query(ClinicalCase).options(joinedload(ClinicalCase.decision_points).joinedload(ClinicalCaseDecisionPoint.options)).filter(ClinicalCase.id == case_id, ClinicalCase.user_id == current_user.id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Clinical case not found")
@@ -105,7 +105,7 @@ def get_clinical_case(case_id: uuid.UUID, db: Session = Depends(get_db), current
 
 
 @router.post("/{case_id}/complete", response_model=ClinicalCaseCompleteResponse)
-def complete_clinical_case(case_id: uuid.UUID, payload: ClinicalCaseCompleteRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def complete_clinical_case(case_id: uuid.UUID, payload: ClinicalCaseCompleteRequest, db: Session = Depends(get_db), current_user: User = Depends(require_paid_user)):
     case = db.query(ClinicalCase).filter(ClinicalCase.id == case_id, ClinicalCase.user_id == current_user.id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Clinical case not found")

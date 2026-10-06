@@ -45,26 +45,9 @@ export default function Home() {
       {/* Pricing */}
       <FadeInSection className="mx-auto max-w-4xl px-6 py-16">
         <h2 className="text-center font-display text-3xl font-semibold text-ink-navy">
-          Start free. Upgrade when you&apos;re ready.
+          Lifetime access for a one-time ₦3,000.
         </h2>
-        <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div className="auth-card p-8">
-            <p className="font-mono text-xs uppercase tracking-widest text-graphite">Free</p>
-            <p className="mt-2 font-display text-3xl font-semibold text-ink-navy">₦0</p>
-            <ul className="mt-6 flex flex-col gap-3 text-sm text-graphite">
-              <li>✓ Unlimited practice questions</li>
-              <li>✓ Flashcards &amp; speed rounds</li>
-              <li>✓ AI tutor &amp; study plans</li>
-              <li>✓ 3 mock exams</li>
-              <li>✓ 1 full CBT exam simulation</li>
-            </ul>
-            <Link
-              href="/signup"
-              className="mt-8 inline-block w-full rounded-md border border-mist px-6 py-3 text-center font-medium text-ink-navy transition-all hover:border-vital-teal hover:shadow-md"
-            >
-              Get started free
-            </Link>
-          </div>
+        <div className="mx-auto mt-10 max-w-md">
           <div className="auth-card relative overflow-hidden border-2 border-vital-teal p-8">
             <p className="absolute right-4 top-4 rounded-full bg-vital-teal px-3 py-1 text-xs font-medium text-chart-cream">
               One-time
@@ -74,16 +57,17 @@ export default function Home() {
               {PREMIUM_LIFETIME_PRICE_LABEL} <span className="text-base font-normal text-graphite">once, forever</span>
             </p>
             <ul className="mt-6 flex flex-col gap-3 text-sm text-graphite">
-              <li>✓ Everything in Free</li>
-              <li>✓ Unlimited mock exams</li>
-              <li>✓ Unlimited full CBT exam simulations</li>
+              <li>✓ Unlimited practice questions &amp; past questions</li>
+              <li>✓ Flashcards, speed rounds &amp; clinical cases</li>
+              <li>✓ AI tutor &amp; study plans</li>
+              <li>✓ Unlimited mock exams &amp; full CBT exam simulations</li>
               <li>✓ Lifetime access — pay once, never again</li>
             </ul>
             <Link
               href="/signup"
               className="mt-8 inline-block w-full rounded-md bg-vital-teal px-6 py-3 text-center font-medium text-chart-cream transition-all hover:-translate-y-0.5 hover:bg-ink-navy hover:shadow-lg"
             >
-              Get premium
+              Sign up to get access
             </Link>
           </div>
         </div>

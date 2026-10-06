@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.cbt_exam import CBTExamSession
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/cbt-exam", tags=["cbt-exam"])
 def start_cbt_exam(
     payload: CBTExamStartRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     if not is_unlimited(current_user):
         finalize_expired_cbt_sessions(db, current_user.id)
@@ -90,7 +90,7 @@ def submit_cbt_answer(
     session_id: uuid.UUID,
     payload: CBTExamAnswerRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     session = _get_owned_session(session_id, db, current_user)
 
@@ -138,7 +138,7 @@ def submit_cbt_answer(
 def submit_cbt_exam(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     session = _get_owned_session(session_id, db, current_user)
     if session.finished_at is not None:
@@ -213,7 +213,7 @@ def submit_cbt_exam(
 def get_cbt_exam_status(
     session_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     session = _get_owned_session(session_id, db, current_user)
     now = utcnow()

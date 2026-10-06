@@ -23,8 +23,8 @@ export default function LoginPage() {
     setNeedsVerification(false);
     setSubmitting(true);
     try {
-      await login(email, password, code);
-      router.push("/dashboard");
+      const me = await login(email, password, code);
+      router.push(me.role === "admin" || me.subscription_status === "active" ? "/dashboard" : "/subscribe");
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
         setRequiresTwoFactor(true);

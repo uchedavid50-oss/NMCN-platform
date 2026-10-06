@@ -6,7 +6,7 @@ from app.core.time import utcnow
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.attempt import Attempt
 from app.models.attempt_answer import AttemptAnswer
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/mock", tags=["mock-exam"])
 def start_mock_exam(
     payload: MockStartRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     if not is_unlimited(current_user):
         finalize_expired_mock_attempts(db, current_user.id)
@@ -96,7 +96,7 @@ def submit_mock_answer(
     attempt_id: uuid.UUID,
     payload: MockAnswerRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     attempt = _get_owned_mock_attempt(attempt_id, db, current_user)
 
@@ -147,7 +147,7 @@ def submit_mock_answer(
 def submit_mock_exam(
     attempt_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     attempt = _get_owned_mock_attempt(attempt_id, db, current_user)
     if attempt.finished_at is not None:
@@ -210,7 +210,7 @@ def submit_mock_exam(
 def get_mock_status(
     attempt_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     attempt = _get_owned_mock_attempt(attempt_id, db, current_user)
 

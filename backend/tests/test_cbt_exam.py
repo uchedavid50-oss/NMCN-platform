@@ -63,18 +63,6 @@ def test_start_cbt_exam_pulls_across_subjects(client, auth_headers, two_subjects
             assert "is_correct" not in option  # answers hidden, same integrity as mock exams
 
 
-def test_free_tier_limited_to_two_cbt_exams(client, auth_headers, two_subjects_with_questions):
-    for _ in range(2):
-        response = client.post(
-            "/cbt-exam/start", json={"question_count": 10, "duration_minutes": 60}, headers=auth_headers
-        )
-        assert response.status_code == 201
-
-    third = client.post(
-        "/cbt-exam/start", json={"question_count": 10, "duration_minutes": 60}, headers=auth_headers
-    )
-    assert third.status_code == 403
-    assert "free tier" in third.json()["detail"].lower()
 
 
 def test_admin_bypasses_cbt_exam_limit(client, admin_headers, two_subjects_with_questions):
@@ -149,7 +137,7 @@ def test_cbt_exam_ownership_enforced(client, auth_headers, make_user, two_subjec
         "/cbt-exam/start", json={"question_count": 250, "duration_minutes": 240}, headers=auth_headers
     ).json()
 
-    _, other_token = make_user()
+    _, other_token = make_user(subscription_status="active")
     other_headers = {"Authorization": f"Bearer {other_token}"}
     response = client.get(f"/cbt-exam/{start['session_id']}", headers=other_headers)
     assert response.status_code == 403

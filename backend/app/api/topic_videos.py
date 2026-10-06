@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin, get_current_user
+from app.api.deps import require_admin, require_paid_user
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.topic import Topic
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/topic-videos", tags=["topic-videos"])
 def get_topic_video(
     topic_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     video = db.query(TopicVideo).filter(TopicVideo.topic_id == topic_id).first()
     if not video:

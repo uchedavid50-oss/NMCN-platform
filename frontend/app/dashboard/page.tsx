@@ -376,7 +376,7 @@ export default function DashboardPage() {
           >
             <p className="text-graphite">Subscription</p>
             <p className="mt-1 text-lg text-ink-navy">
-              {user.subscription_status === "active" ? "Premium ✓" : "Free — upgrade →"}
+              {user.subscription_status === "active" ? "Premium ✓" : "Subscribe →"}
             </p>
           </Link>
           <div className="rounded-md border border-mist bg-card-bg p-4 transition-shadow hover:shadow-md">

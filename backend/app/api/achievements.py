@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.attempt import Attempt
 from app.models.user import User
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/achievements", tags=["achievements"])
 @router.get("/badges", response_model=list[Badge])
 def get_badges(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     return compute_badges(db, current_user.id)
 
@@ -23,7 +23,7 @@ def get_badges(
 @router.get("/certificate/eligibility", response_model=CertificateEligibility)
 def get_certificate_eligibility(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     eligible, reason = is_eligible_for_certificate(db, current_user.id)
     return CertificateEligibility(eligible=eligible, reason=reason)
@@ -32,7 +32,7 @@ def get_certificate_eligibility(
 @router.get("/certificate/download")
 def download_certificate(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     eligible, reason = is_eligible_for_certificate(db, current_user.id)
     if not eligible:

@@ -7,7 +7,8 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
- login: (email: string, password: string, totpCode?: string) => Promise<void>;
+ login: (email: string, password: string, totpCode?: string) => Promise<User>;
+  refreshUser: () => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -42,7 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { access_token } = await api.login(email, password, totpCode);
     localStorage.setItem(TOKEN_KEY, access_token);
     setToken(access_token);
-    setUser(await api.me(access_token));
+    const me = await api.me(access_token);
+    setUser(me);
+    return me;
+  }
+
+  /** Re-fetches /auth/me -- used after payment so the route guard sees the
+   * new subscription_status without a full page reload. */
+  async function refreshUser() {
+    if (token) setUser(await api.me(token));
   }
 
   async function signup(email: string, password: string) {
@@ -67,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, signup, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

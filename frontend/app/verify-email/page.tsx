@@ -37,7 +37,7 @@ function VerifyEmailContent() {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 text-center">
         <h1 className="font-display text-3xl font-semibold text-ink-navy">Email verified</h1>
-        <p className="mt-3 text-graphite">Your account is active — you can log in now.</p>
+        <p className="mt-3 text-graphite">Your email is confirmed. Log in to activate Premium and start practicing.</p>
         <Link
           href="/login"
           className="mt-6 inline-block rounded-md bg-vital-teal px-6 py-3 font-medium text-chart-cream transition hover:bg-ink-navy"

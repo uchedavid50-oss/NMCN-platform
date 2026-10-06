@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin, get_current_user
+from app.api.deps import require_admin, require_paid_user
 from app.core.time import utcnow
 from app.db.session import get_db
 from app.models.organ import Organ
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/organs", tags=["organs"])
 @router.get("", response_model=list[OrganOut])
 def list_organs(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     return db.query(Organ).order_by(Organ.name).all()
 
@@ -26,7 +26,7 @@ def list_organs(
 def get_organ_video(
     organ_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     video = db.query(OrganVideo).filter(OrganVideo.organ_id == organ_id).first()
     if not video:

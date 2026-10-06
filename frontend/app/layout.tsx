@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { ToastProvider } from "@/lib/toast-context";
+import { PaywallGuard } from "@/components/PaywallGuard";
 import { PageTransition } from "@/components/motion/PageTransition";
 const heading = Inter({
   subsets: ["latin"],
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>
-              <PageTransition>{children}</PageTransition>
+              <PaywallGuard>
+                <PageTransition>{children}</PageTransition>
+              </PaywallGuard>
             </ToastProvider>
           </AuthProvider>
         </ThemeProvider>

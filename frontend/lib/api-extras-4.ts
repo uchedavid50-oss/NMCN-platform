@@ -42,6 +42,17 @@ export function initializePayment(plan: string, token: string) {
   );
 }
 
+export interface VerifyPaymentResult {
+  status: string;
+  subscription_status: string;
+}
+
+/** Asks the backend to verify the transaction with Paystack and activate the
+ * account. Idempotent -- safe to call repeatedly / on refresh. */
+export function verifyPayment(reference: string, token: string) {
+  return request<VerifyPaymentResult>(`/payments/verify/${encodeURIComponent(reference)}`, {}, token);
+}
+
 export function getSubscriptionStatus(token: string) {
   return request<SubscriptionStatus>("/payments/subscription", {}, token);
 }

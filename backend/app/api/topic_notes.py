@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import require_admin, get_current_user
+from app.api.deps import require_admin, require_paid_user
 from app.api.tutor import _call_gemini, _check_tutor_available
 from app.core.time import utcnow
 from app.db.session import get_db
@@ -24,7 +24,7 @@ EXAM_FRAMING = {
 def get_topic_note(
     topic_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     note = db.query(TopicNote).filter(TopicNote.topic_id == topic_id).first()
     if not note:

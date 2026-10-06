@@ -54,7 +54,7 @@ def test_bulk_import_creates_subject_topic_and_question(client, admin_headers):
     assert body["created_count"] == 1
     assert body["skipped_rows"] == []
 
-    subjects = client.get("/subjects").json()
+    subjects = client.get("/subjects", headers=admin_headers).json()
     assert any(s["name"] == "Anatomy" for s in subjects)
 
 

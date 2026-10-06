@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import require_paid_user, require_admin
 from app.api.tutor import _call_gemini, _check_tutor_available
 from app.db.session import get_db
 from app.models.pending_option import PendingOption
@@ -47,7 +47,7 @@ def create_folder(
 @router.get("/folders", response_model=list[TextbookFolderOut])
 def list_folders(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     return db.query(TextbookFolder).order_by(TextbookFolder.name.asc()).all()
 
@@ -85,7 +85,7 @@ async def upload_textbook(
 def list_textbooks_in_folder(
     folder_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     folder = db.query(TextbookFolder).filter(TextbookFolder.id == folder_id).first()
     if not folder:
@@ -102,7 +102,7 @@ def list_textbooks_in_folder(
 def download_textbook(
     textbook_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     textbook = db.query(Textbook).filter(Textbook.id == textbook_id).first()
     if not textbook:

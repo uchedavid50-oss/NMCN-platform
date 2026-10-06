@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.analytics import _topic_performance_query
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.attempt import Attempt
@@ -145,7 +145,7 @@ def _call_gemini(
 def ask_tutor(
     payload: TutorAskRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     _check_tutor_available(db, current_user.id)
 
@@ -193,7 +193,7 @@ def ask_tutor(
 @router.post("/study-plan", response_model=StudyPlanResponse)
 def get_study_plan(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """Fulfills the original charter's "recommend study plans" / "identify weak
     topics" goals for the AI Tutor, built directly on top of the same weak-topic

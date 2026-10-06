@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin
+from app.api.deps import require_admin, require_paid_user
 from app.db.session import get_db
 from app.models.subject import Subject
 from app.models.topic import Topic
@@ -27,7 +27,11 @@ def create_topic(payload: TopicCreate, db: Session = Depends(get_db), _admin: Us
 
 
 @router.get("", response_model=List[TopicOut])
-def list_topics(subject_id: Optional[uuid.UUID] = Query(default=None), db: Session = Depends(get_db)):
+def list_topics(
+    subject_id: Optional[uuid.UUID] = Query(default=None),
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_paid_user),
+):
     query = db.query(Topic)
     if subject_id:
         query = query.filter(Topic.subject_id == subject_id)
@@ -35,7 +39,7 @@ def list_topics(subject_id: Optional[uuid.UUID] = Query(default=None), db: Sessi
 
 
 @router.get("/{topic_id}", response_model=TopicOut)
-def get_topic(topic_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_topic(topic_id: uuid.UUID, db: Session = Depends(get_db), _user: User = Depends(require_paid_user)):
     topic = db.query(Topic).filter(Topic.id == topic_id).first()
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")

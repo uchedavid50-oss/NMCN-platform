@@ -54,18 +54,6 @@ def test_speed_round_start_404_unknown_topic(client, auth_headers):
     assert response.status_code == 404
 
 
-def test_free_tier_limited_to_two_speed_rounds(client, auth_headers, topic_with_question):
-    for _ in range(2):
-        response = client.get(
-            f"/games/speed-round/start?topic_id={topic_with_question['id']}", headers=auth_headers
-        )
-        assert response.status_code == 200
-
-    third = client.get(
-        f"/games/speed-round/start?topic_id={topic_with_question['id']}", headers=auth_headers
-    )
-    assert third.status_code == 403
-    assert "free tier" in third.json()["detail"].lower()
 
 
 def test_admin_bypasses_speed_round_limit(client, admin_headers, topic_with_question):

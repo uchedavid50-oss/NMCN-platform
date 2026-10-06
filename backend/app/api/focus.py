@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.focus_session import FocusSession
 from app.models.user import User
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/focus", tags=["focus"])
 def complete_focus_session(
     payload: FocusSessionCompleteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     db.add(FocusSession(user_id=current_user.id, duration_minutes=payload.duration_minutes))
     db.commit()

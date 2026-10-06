@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.api.tutor import _call_gemini, _check_tutor_available
 from app.db.session import get_db
 from app.models.generated_option import GeneratedOption
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/notes", tags=["notes"])
 async def upload_note(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:
@@ -50,7 +50,7 @@ async def upload_note(
 @router.get("", response_model=List[NoteOut])
 def list_notes(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     return (
         db.query(UploadedNote)
@@ -103,7 +103,7 @@ def generate_questions_from_note(
     note_id: uuid.UUID,
     payload: GenerateQuestionsRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     _check_tutor_available(db, current_user.id)
 
@@ -163,7 +163,7 @@ def generate_questions_from_note(
 def get_generated_questions(
     note_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     note = (
         db.query(UploadedNote)
@@ -186,7 +186,7 @@ def ask_about_note(
     note_id: uuid.UUID,
     payload: NotesAskRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     _check_tutor_available(db, current_user.id)
 

@@ -122,11 +122,19 @@ def verify_user(db_session):
 
 @pytest.fixture()
 def auth_headers(make_user):
-    _, token = make_user()
+    """A paid user -- content endpoints are paywalled, so the default test
+    student has to be paid. Use free_headers for the unpaid case."""
+    _, token = make_user(subscription_status="active")
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture()
 def admin_headers(make_user):
     _, token = make_user(role="admin")
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def free_headers(make_user):
+    _, token = make_user(subscription_status="free")
     return {"Authorization": f"Bearer {token}"}

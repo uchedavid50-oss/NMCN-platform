@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.free_trial_usage import FreeTrialUsage
 from app.models.question import Question
@@ -31,7 +31,7 @@ def start_speed_round(
     topic_id: Optional[uuid.UUID] = Query(default=None),
     count: int = Query(default=10, ge=1, le=25),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """Deliberately includes is_correct in the response, unlike /practice and
     /mock — this is a casual arcade-style game (Module 24), not a scored,
@@ -73,7 +73,7 @@ def start_speed_round(
 def submit_speed_round(
     payload: SpeedRoundSubmitRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     if payload.correct_answers > payload.total_questions:
         raise HTTPException(status_code=400, detail="correct_answers can't exceed total_questions")
@@ -102,7 +102,7 @@ def submit_speed_round(
 @router.get("/streak", response_model=StreakResponse)
 def get_streak(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     streak, played_today = compute_streak(db, current_user.id)
     return StreakResponse(current_streak=streak, played_today=played_today)
@@ -112,7 +112,7 @@ def get_streak(
 def set_leaderboard_opt_in(
     payload: LeaderboardOptInRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """Opt-in only, by design — a student's streak and activity are never
     shown to other students unless they explicitly choose to be listed, and
@@ -129,7 +129,7 @@ def set_leaderboard_opt_in(
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])
 def get_leaderboard(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     opted_in_users = db.query(User).filter(User.leaderboard_opt_in.is_(True)).all()
 

@@ -123,19 +123,6 @@ def test_mock_answer_rejected_after_time_expires(client, auth_headers, topic_wit
     assert "already been submitted" in response.json()["detail"].lower()
 
 
-def test_free_tier_mock_limit_enforced(client, auth_headers, topic_with_question):
-    topic, _ = topic_with_question
-    for _ in range(2):
-        response = client.post(
-            "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=auth_headers
-        )
-        assert response.status_code == 201
-
-    third = client.post(
-        "/mock/start", json={"topic_id": topic["id"], "duration_minutes": 30}, headers=auth_headers
-    )
-    assert third.status_code == 403
-    assert "free tier" in third.json()["detail"].lower()
 
 
 def test_admin_bypasses_mock_limit(client, admin_headers, topic_with_question):

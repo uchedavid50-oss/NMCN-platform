@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.attempt import Attempt
 from app.models.attempt_answer import AttemptAnswer
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 @router.get("/overview", response_model=OverviewStats)
 def get_overview(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     finalize_expired_mock_attempts(db, current_user.id)
     attempts = db.query(Attempt).filter(Attempt.user_id == current_user.id)
@@ -82,7 +82,7 @@ def _topic_performance_query(db: Session, current_user: User):
 @router.get("/by-topic", response_model=List[TopicPerformance])
 def get_performance_by_topic(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     rows = _topic_performance_query(db, current_user).all()
 
@@ -108,7 +108,7 @@ def get_weak_topics(
     threshold_percentage: float = Query(default=60.0, ge=0, le=100),
     min_sample_size: int = Query(default=3, ge=1),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """A topic is flagged 'weak' only once there's enough data to trust the number —
     a single wrong answer on a brand-new topic isn't a meaningful signal yet."""
@@ -141,7 +141,7 @@ def get_attempt_history(
     offset: int = Query(default=0, ge=0),
     mode: Optional[str] = Query(default=None, pattern="^(practice|mock)$"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     finalize_expired_mock_attempts(db, current_user.id)
     query = (

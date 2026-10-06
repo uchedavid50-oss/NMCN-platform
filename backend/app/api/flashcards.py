@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user
+from app.api.deps import require_paid_user
 from app.db.session import get_db
 from app.models.free_trial_usage import FreeTrialUsage
 from app.models.question import Question
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 def get_flashcards(
     topic_id: uuid.UUID = Query(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     """Unlike /questions (admin-only, Module 8), this deliberately shows the
     answer to any logged-in student — that's the entire point of a flashcard,

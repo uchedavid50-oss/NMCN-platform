@@ -33,7 +33,7 @@ export default function SignupPage() {
           <h1 className="font-display text-3xl font-semibold text-ink-navy">Check your email</h1>
           <p className="mt-3 text-graphite">
             We&apos;ve sent a verification link to <strong>{email}</strong>. Click it to activate
-            your account, then log in.
+            your account, then log in — you&apos;ll go straight to activating your Premium access.
           </p>
           <Link
             href="/login"

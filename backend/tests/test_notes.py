@@ -120,7 +120,7 @@ def test_generated_questions_are_private_to_owner(client, auth_headers, make_use
         headers=auth_headers,
     ).json()
 
-    _, other_token = make_user()
+    _, other_token = make_user(subscription_status="active")
     other_headers = {"Authorization": f"Bearer {other_token}"}
 
     response = client.get(f"/notes/{upload['id']}/questions", headers=other_headers)
@@ -182,7 +182,7 @@ def test_ask_about_note_404_for_other_users_note(client, auth_headers, make_user
         headers=auth_headers,
     ).json()
 
-    _, other_token = make_user()
+    _, other_token = make_user(subscription_status="active")
     other_headers = {"Authorization": f"Bearer {other_token}"}
 
     response = client.post(

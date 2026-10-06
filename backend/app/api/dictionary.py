@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import require_paid_user, require_admin
 from app.api.tutor import _call_gemini, _check_tutor_available
 from app.db.session import get_db
 from app.models.dictionary_entry import DictionaryEntry
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/dictionary", tags=["dictionary"])
 def search_dictionary(
     payload: DictionarySearchRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     term_normalized = payload.term.strip()
 
@@ -51,7 +51,7 @@ def search_dictionary(
 def list_dictionary(
     q: str = "",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     query = db.query(DictionaryEntry)
     if q:

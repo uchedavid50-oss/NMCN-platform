@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin, get_current_user
+from app.api.deps import require_admin, require_paid_user
 from app.db.session import get_db
 from app.models.ai_provider_attempt import AIProviderAttempt
 from app.models.entrance_exam_generation_request import EntranceExamGenerationRequest
@@ -48,7 +48,7 @@ def list_entrance_exam_questions(
     subject: str,
     count: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_paid_user),
 ):
     # Admins and active subscribers get unlimited access; everyone else is
     # capped at the admin-configurable free tier limit, randomized fresh on
