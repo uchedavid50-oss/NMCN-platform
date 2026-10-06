@@ -17,3 +17,8 @@ Thumbs.db
 
 *.sql
 frontend/tsconfig.tsbuildinfo
+
+# Secrets
+backend/app/api/paystack keys.env
+*.env
+!.env.example
