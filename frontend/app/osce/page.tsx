@@ -8,20 +8,20 @@ import { api, Subject, Topic } from "@/lib/api";
 const OSCE_PREFIX = "OSCE: ";
 
 export default function OscePage() {
-  const { user, loading } = useRequireAuth();
+  const { user, token, loading } = useRequireAuth();
   const [subjects, setSubjects] = useState<Subject[] | null>(null);
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    Promise.all([api.listSubjects(), api.listAllTopics()])
+    if (!user || !token) return;
+    Promise.all([api.listSubjects(token), api.listAllTopics(token)])
       .then(([s, t]) => {
         setSubjects(s);
         setTopics(t);
       })
       .catch(() => setError("Couldn't load OSCE procedures. Try refreshing."));
-  }, [user]);
+  }, [user, token]);
 
   if (loading || !user) {
     return (

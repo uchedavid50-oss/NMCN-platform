@@ -26,8 +26,9 @@ export default function PastQuestionsPage() {
   const [finalResult, setFinalResult] = useState<{ score: number; streak: number } | null>(null);
 
   useEffect(() => {
-    getPastQuestionsCount().then((r) => setAvailableCount(r.count)).catch(() => setAvailableCount(0));
-  }, []);
+    if (!token) return;
+    getPastQuestionsCount(token).then((r) => setAvailableCount(r.count)).catch(() => setAvailableCount(0));
+  }, [token]);
 
   async function handleStart() {
     if (!token) return;

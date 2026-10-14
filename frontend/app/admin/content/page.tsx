@@ -101,7 +101,7 @@ const [noteBulkStatus, setNoteBulkStatus] = useState("");
 
   function refreshAll() {
     if (!token) return;
-    api.listAllTopics().then(setTopics).catch(() => {});
+    api.listAllTopics(token).then(setTopics).catch(() => {});
     api.listAdminDocuments(token).then(setDocuments).catch(() => {});
     api.listPendingQuestions(token).then(setPending).catch(() => {});
   }

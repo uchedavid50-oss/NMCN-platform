@@ -17,7 +17,7 @@ export default function OsceTopicPage() {
 
   useEffect(() => {
     if (!user || !token) return;
-    api.getTopic(topicId).then(setTopic).catch(() => setError("Couldn't load this procedure."));
+    api.getTopic(topicId, token).then(setTopic).catch(() => setError("Couldn't load this procedure."));
     getTopicVideo(topicId, token)
       .then(setVideo)
       .catch((err) => {

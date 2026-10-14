@@ -8,17 +8,17 @@ import { api, Topic } from "@/lib/api";
 
 export default function SubjectTopicsPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
-  const { user, loading } = useRequireAuth();
+  const { user, token, loading } = useRequireAuth();
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !token) return;
     api
-      .listTopics(subjectId)
+      .listTopics(subjectId, token)
       .then(setTopics)
       .catch(() => setError("Couldn't load topics. Try refreshing."));
-  }, [user, subjectId]);
+  }, [user, token, subjectId]);
 
   if (loading || !user) {
     return (

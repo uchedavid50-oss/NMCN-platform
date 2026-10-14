@@ -6,17 +6,17 @@ import { useRequireAuth } from "@/lib/use-require-auth";
 import { api, Subject } from "@/lib/api";
 
 export default function SubjectsPage() {
-  const { user, loading } = useRequireAuth();
+  const { user, token, loading } = useRequireAuth();
   const [subjects, setSubjects] = useState<Subject[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !token) return;
     api
-      .listSubjects()
+      .listSubjects(token)
       .then(setSubjects)
       .catch(() => setError("Couldn't load subjects. Try refreshing."));
-  }, [user]);
+  }, [user, token]);
 
   if (loading || !user) {
     return (

@@ -236,12 +236,12 @@ export default function DashboardPage() {
     async function loadProgress() {
       try {
         const [subjects, performance] = await Promise.all([
-          api.listSubjects(),
+          api.listSubjects(token!),
           api.getByTopic(token!),
         ]);
         const results: SubjectProgress[] = [];
         for (const subject of subjects) {
-          const topics = await api.listTopics(subject.id);
+          const topics = await api.listTopics(subject.id, token!);
           const attempted = performance.filter(
             (p) => p.subject_name === subject.name && p.total_answered > 0
           ).length;

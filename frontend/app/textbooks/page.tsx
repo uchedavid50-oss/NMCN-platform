@@ -47,7 +47,7 @@ export default function TextbooksPage() {
     if (!user || !token) return;
     refreshFolders();
     if (user.role === "admin") {
-      api.listAllTopics().then(setTopics).catch(() => {});
+      api.listAllTopics(token).then(setTopics).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);

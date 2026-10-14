@@ -36,8 +36,8 @@ export interface PastQuestion {
   options: PastQuestionOption[];
 }
 
-export function getPastQuestionsCount() {
-  return request<{ count: number }>("/past-questions/count", {});
+export function getPastQuestionsCount(token: string) {
+  return request<{ count: number }>("/past-questions/count", {}, token);
 }
 
 export function startPastQuestionsPractice(count: number, token: string) {

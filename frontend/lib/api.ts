@@ -405,13 +405,14 @@ export const api = {
   deleteSession: (sessionId: string, token: string) =>
     request<void>(`/auth/sessions/${sessionId}`, { method: "DELETE" }, token),
 
-  listSubjects: () => request<Subject[]>("/subjects"),
+  listSubjects: (token: string) => request<Subject[]>("/subjects", {}, token),
 
-  listTopics: (subjectId: string) => request<Topic[]>(`/topics?subject_id=${subjectId}`),
+  listTopics: (subjectId: string, token: string) =>
+    request<Topic[]>(`/topics?subject_id=${subjectId}`, {}, token),
 
-  listAllTopics: () => request<Topic[]>("/topics"),
+  listAllTopics: (token: string) => request<Topic[]>("/topics", {}, token),
 
-  getTopic: (topicId: string) => request<Topic>(`/topics/${topicId}`),
+  getTopic: (topicId: string, token: string) => request<Topic>(`/topics/${topicId}`, {}, token),
 
   startPractice: (topicId: string, token: string) =>
     request<PracticeStartResponse>(
